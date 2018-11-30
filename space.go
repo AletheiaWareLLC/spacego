@@ -34,6 +34,14 @@ import (
 	"syscall"
 )
 
+const (
+	SPACE_PREFIX         = "Space "
+	SPACE_REGISTRATION   = "Space Registration"
+	SPACE_FILE_PREFIX    = "Space File "
+	SPACE_META_PREFIX    = "Space Meta "
+	SPACE_PREVIEW_PREFIX = "Space Preview "
+)
+
 func GetOrCreatePrivateKey() (*rsa.PrivateKey, error) {
 	keystore, ok := os.LookupEnv("KEYSTORE")
 	if !ok {
