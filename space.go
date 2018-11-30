@@ -20,10 +20,13 @@ package spacego
 import (
 	"bytes"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	//bc "github.com/AletheiaWareLLC/bcgo"
 	bcutils "github.com/AletheiaWareLLC/bcgo/utils"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/crypto/ssh/terminal"
+	"io"
 	"log"
 	"os"
 	"os/user"
@@ -41,17 +44,22 @@ func GetOrCreatePrivateKey() (*rsa.PrivateKey, error) {
 		keystore = path.Join(u.HomeDir, "bc")
 	}
 
-	var key *rsa.PrivateKey
-
 	if bcutils.HasRSAPrivateKey(keystore) {
 		fmt.Println("Found keystore under " + keystore)
-		fmt.Print("Enter keystore password: ")
-		password, err := terminal.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			return nil, err
+		var password []byte
+		pwd, ok := os.LookupEnv("PASSWORD")
+		if ok {
+			password = []byte(pwd)
+		} else {
+			fmt.Print("Enter keystore password: ")
+			var err error
+			password, err = terminal.ReadPassword(int(syscall.Stdin))
+			if err != nil {
+				return nil, err
+			}
+			fmt.Println()
 		}
-		fmt.Println()
-		key, err = bcutils.GetRSAPrivateKey(keystore, password)
+		key, err := bcutils.GetRSAPrivateKey(keystore, password)
 		if err != nil {
 			return nil, err
 		}
@@ -61,6 +69,7 @@ func GetOrCreatePrivateKey() (*rsa.PrivateKey, error) {
 			return nil, err
 		}
 		fmt.Println(publicKeyBase64)
+		return key, nil
 	} else {
 		fmt.Println("Creating keystore under " + keystore)
 
@@ -82,7 +91,7 @@ func GetOrCreatePrivateKey() (*rsa.PrivateKey, error) {
 			log.Fatal("Passwords don't match")
 		}
 
-		key, err = bcutils.CreateRSAPrivateKey(keystore, password)
+		key, err := bcutils.CreateRSAPrivateKey(keystore, password)
 		if err != nil {
 			return nil, err
 		}
@@ -92,6 +101,63 @@ func GetOrCreatePrivateKey() (*rsa.PrivateKey, error) {
 			return nil, err
 		}
 		fmt.Printf("Successfully created key pair, visit https://space.aletheiaware.com/register and register your public key;\n\n%s\n", publicKeyBase64)
+		return key, nil
 	}
-	return key, nil
+}
+
+func ReadStorageRequest(reader io.Reader) (*StorageRequest, error) {
+	var data [1024]byte
+	n, err := reader.Read(data[:])
+	if err != nil {
+		return nil, err
+	}
+	if n <= 0 {
+		return nil, errors.New("Could not read data")
+	}
+	size, s := proto.DecodeVarint(data[:])
+	if s <= 0 {
+		return nil, errors.New("Could not read size")
+	}
+
+	// Create new larger buffer
+	buffer := make([]byte, size)
+	// Calculate data received
+	count := uint64(n - s)
+	// Copy data into new buffer
+	copy(buffer[:count], data[s:n])
+	// Read addition bytes
+	for count < size {
+		n, err := reader.Read(buffer[count:])
+		if err != nil {
+			return nil, err
+		}
+		if n <= 0 {
+			return nil, errors.New("Could not read data")
+		}
+		count = count + uint64(n)
+	}
+
+	// Unmarshal as StorageRequest
+	request := &StorageRequest{}
+	if err = proto.Unmarshal(buffer, request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func WriteStorageResponse(writer io.Writer, response *StorageResponse) error {
+	data, err := proto.Marshal(response)
+	if err != nil {
+		return err
+	}
+	size := uint64(len(data))
+	// Write response size varint
+	if _, err := writer.Write(proto.EncodeVarint(size)); err != nil {
+		return err
+	}
+	// Write response data
+	if _, err := writer.Write(data); err != nil {
+		return err
+	}
+	return nil
 }
