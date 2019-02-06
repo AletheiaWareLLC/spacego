@@ -24,9 +24,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
-	//"errors"
 	"github.com/AletheiaWareLLC/bcgo"
-	"github.com/AletheiaWareLLC/financego"
 	"github.com/golang/protobuf/proto"
 	"io"
 	"log"
@@ -68,31 +66,6 @@ func GetMeta(metas *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash 
 			callback(entry, meta)
 		}
 	})
-}
-
-func GetCustomer(node *bcgo.Node) (*financego.Customer, error) {
-	// Open Customer Channel
-	channel, err := financego.OpenCustomerChannel()
-	if err != nil {
-		return nil, err
-	}
-	// Sync channel
-	if err := channel.Sync(); err != nil {
-		return nil, err
-	}
-	return financego.GetCustomerSync(channel, node.Alias, node.Key, node.Alias)
-}
-
-func GetSubscription(node *bcgo.Node) (*financego.Subscription, error) {
-	channel, err := financego.OpenSubscriptionChannel()
-	if err != nil {
-		return nil, err
-	}
-	// Sync channel
-	if err := channel.Sync(); err != nil {
-		return nil, err
-	}
-	return financego.GetSubscriptionSync(channel, node.Alias, node.Key, node.Alias)
 }
 
 func NewBundle(node *bcgo.Node, payload []byte) (*StorageRequest_Bundle, error) {
