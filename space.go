@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 Aletheia Ware LLC
+ * Copyright 2019 Aletheia Ware LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,154 +18,176 @@
 package spacego
 
 import (
-	"bytes"
+	"bufio"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"crypto/rsa"
-	"errors"
-	"fmt"
-	//bc "github.com/AletheiaWareLLC/bcgo"
-	bcutils "github.com/AletheiaWareLLC/bcgo/utils"
+	"crypto/sha512"
+	//"errors"
+	"github.com/AletheiaWareLLC/bcgo"
+	"github.com/AletheiaWareLLC/financego"
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"log"
-	"os"
-	"os/user"
-	"path"
-	"syscall"
+	"net"
+	"strconv"
 )
 
 const (
+	SPACE_HOST           = "space.aletheiaware.com"
+	SPACE_WEBSITE        = "https://space.aletheiaware.com"
 	SPACE_PREFIX         = "Space "
-	SPACE_REGISTRATION   = "Space Registration"
-	SPACE_FILE_PREFIX    = "Space File "
-	SPACE_META_PREFIX    = "Space Meta "
-	SPACE_PREVIEW_PREFIX = "Space Preview "
+	SPACE_PREFIX_FILE    = "Space File "
+	SPACE_PREFIX_META    = "Space Meta "
+	SPACE_PREFIX_PREVIEW = "Space Preview "
+
+	PORT_UPLOAD = 23232
 )
 
-func GetOrCreatePrivateKey() (*rsa.PrivateKey, error) {
-	keystore, ok := os.LookupEnv("KEYSTORE")
-	if !ok {
-		u, err := user.Current()
-		if err != nil {
-			return nil, err
-		}
-		keystore = path.Join(u.HomeDir, "bc")
-	}
-
-	if bcutils.HasRSAPrivateKey(keystore) {
-		fmt.Println("Found keystore under " + keystore)
-		var password []byte
-		pwd, ok := os.LookupEnv("PASSWORD")
-		if ok {
-			password = []byte(pwd)
-		} else {
-			fmt.Print("Enter keystore password: ")
-			var err error
-			password, err = terminal.ReadPassword(int(syscall.Stdin))
-			if err != nil {
-				return nil, err
-			}
-			fmt.Println()
-		}
-		key, err := bcutils.GetRSAPrivateKey(keystore, password)
-		if err != nil {
-			return nil, err
-		}
-
-		publicKeyBase64, err := bcutils.RSAPublicKeyToBase64(&key.PublicKey)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Println(publicKeyBase64)
-		return key, nil
-	} else {
-		fmt.Println("Creating keystore under " + keystore)
-
-		fmt.Print("Enter keystore password: ")
-		password, err := terminal.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			return nil, err
-		}
-		fmt.Println()
-
-		fmt.Print("Confirm keystore password: ")
-		confirm, err := terminal.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			return nil, err
-		}
-		fmt.Println()
-
-		if !bytes.Equal(password, confirm) {
-			log.Fatal("Passwords don't match")
-		}
-
-		key, err := bcutils.CreateRSAPrivateKey(keystore, password)
-		if err != nil {
-			return nil, err
-		}
-
-		publicKeyBase64, err := bcutils.RSAPublicKeyToBase64(&key.PublicKey)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("Successfully created key pair, visit https://space.aletheiaware.com/register and register your public key;\n\n%s\n", publicKeyBase64)
-		return key, nil
-	}
+func OpenFileChannel(alias string) (*bcgo.Channel, error) {
+	return bcgo.OpenChannel(SPACE_PREFIX_FILE + alias)
 }
 
-func ReadStorageRequest(reader io.Reader) (*StorageRequest, error) {
-	var data [1024]byte
-	n, err := reader.Read(data[:])
+func OpenMetaChannel(alias string) (*bcgo.Channel, error) {
+	return bcgo.OpenChannel(SPACE_PREFIX_META + alias)
+}
+
+func GetFile(files *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte)) error {
+	return files.Read(alias, key, recordHash, callback)
+}
+
+func GetMeta(metas *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, *Meta)) error {
+	return metas.Read(alias, key, recordHash, func(entry *bcgo.BlockEntry, data []byte) {
+		// Unmarshal as Meta
+		meta := &Meta{}
+		err := proto.Unmarshal(data, meta)
+		if err != nil {
+			log.Println(err)
+		} else {
+			callback(entry, meta)
+		}
+	})
+}
+
+func GetCustomer(node *bcgo.Node) (*financego.Customer, error) {
+	// Open Customer Channel
+	channel, err := financego.OpenCustomerChannel()
 	if err != nil {
 		return nil, err
 	}
-	if n <= 0 {
-		return nil, errors.New("Could not read data")
+	// Sync channel
+	if err := channel.Sync(); err != nil {
+		return nil, err
 	}
-	size, s := proto.DecodeVarint(data[:])
-	if s <= 0 {
-		return nil, errors.New("Could not read size")
+	return financego.GetCustomerSync(channel, node.Alias, node.Key, node.Alias)
+}
+
+func GetSubscription(node *bcgo.Node) (*financego.Subscription, error) {
+	channel, err := financego.OpenSubscriptionChannel()
+	if err != nil {
+		return nil, err
+	}
+	// Sync channel
+	if err := channel.Sync(); err != nil {
+		return nil, err
+	}
+	return financego.GetSubscriptionSync(channel, node.Alias, node.Key, node.Alias)
+}
+
+func NewBundle(node *bcgo.Node, payload []byte) (*StorageRequest_Bundle, error) {
+	// TODO compress payload
+
+	// Generate a random shared key
+	key := make([]byte, bcgo.AES_KEY_SIZE_BYTES)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		return nil, err
 	}
 
-	// Create new larger buffer
-	buffer := make([]byte, size)
-	// Calculate data received
-	count := uint64(n - s)
-	// Copy data into new buffer
-	copy(buffer[:count], data[s:n])
-	// Read addition bytes
-	for count < size {
-		n, err := reader.Read(buffer[count:])
-		if err != nil {
-			return nil, err
-		}
-		if n <= 0 {
-			return nil, errors.New("Could not read data")
-		}
-		count = count + uint64(n)
+	// Create cipher
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
 	}
 
+	// Create galois counter mode
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate nonce
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	// Encrypt payload
+	encryptedPayload := append(nonce, gcm.Seal(nil, nonce, payload, nil)...)
+
+	// Hash encrypted payload
+	hashed := bcgo.Hash(encryptedPayload)
+
+	// Sign hash of encrypted payload
+	signature, err := bcgo.CreateSignature(node.Key, hashed, bcgo.SignatureAlgorithm_SHA512WITHRSA_PSS)
+	if err != nil {
+		return nil, err
+	}
+
+	// Encrypt AES key with RSA public key
+	encryptedKey, err := rsa.EncryptOAEP(sha512.New(), rand.Reader, &node.Key.PublicKey, key, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &StorageRequest_Bundle{
+		Key:                    encryptedKey,
+		KeyEncryptionAlgorithm: bcgo.EncryptionAlgorithm_RSA_ECB_OAEPPADDING,
+		Payload:                encryptedPayload,
+		CompressionAlgorithm:   bcgo.CompressionAlgorithm_UNKNOWN_COMPRESSION,
+		EncryptionAlgorithm:    bcgo.EncryptionAlgorithm_AES_GCM_NOPADDING,
+		Signature:              signature,
+		SignatureAlgorithm:     bcgo.SignatureAlgorithm_SHA512WITHRSA_PSS,
+	}, nil
+}
+
+func Upload(host string, request *StorageRequest) (*StorageResponse, error) {
+	address := host + ":" + strconv.Itoa(PORT_UPLOAD)
+	log.Println(address)
+	connection, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil, err
+	}
+	defer connection.Close()
+	reader := bufio.NewReader(connection)
+	writer := bufio.NewWriter(connection)
+	if err := WriteStorageRequest(writer, request); err != nil {
+		return nil, err
+	}
+	return ReadStorageResponse(reader)
+}
+
+func ReadStorageRequest(reader *bufio.Reader) (*StorageRequest, error) {
 	// Unmarshal as StorageRequest
 	request := &StorageRequest{}
-	if err = proto.Unmarshal(buffer, request); err != nil {
+	if err := bcgo.ReadDelimitedProtobuf(reader, request); err != nil {
 		return nil, err
 	}
 	return request, nil
 }
 
-func WriteStorageResponse(writer io.Writer, response *StorageResponse) error {
-	data, err := proto.Marshal(response)
-	if err != nil {
-		return err
+func ReadStorageResponse(reader *bufio.Reader) (*StorageResponse, error) {
+	response := &StorageResponse{}
+	if err := bcgo.ReadDelimitedProtobuf(reader, response); err != nil {
+		return nil, err
 	}
-	size := uint64(len(data))
-	// Write response size varint
-	if _, err := writer.Write(proto.EncodeVarint(size)); err != nil {
-		return err
-	}
-	// Write response data
-	if _, err := writer.Write(data); err != nil {
-		return err
-	}
-	return nil
+	return response, nil
+}
+
+func WriteStorageRequest(writer *bufio.Writer, request *StorageRequest) error {
+	return bcgo.WriteDelimitedProtobuf(writer, request)
+}
+
+func WriteStorageResponse(writer *bufio.Writer, response *StorageResponse) error {
+	return bcgo.WriteDelimitedProtobuf(writer, response)
 }
