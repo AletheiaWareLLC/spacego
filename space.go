@@ -30,6 +30,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"time"
 )
 
 const (
@@ -121,6 +122,70 @@ func NewBundle(node *bcgo.Node, payload []byte) (*StorageRequest_Bundle, error) 
 		EncryptionAlgorithm:    bcgo.EncryptionAlgorithm_AES_GCM_NOPADDING,
 		Signature:              signature,
 		SignatureAlgorithm:     bcgo.SignatureAlgorithm_SHA512WITHRSA_PSS,
+	}, nil
+}
+
+func MineBundle(node *bcgo.Node, channel *bcgo.Channel, alias string, publicKey *rsa.PublicKey, bundle *StorageRequest_Bundle, references []*bcgo.Reference) (*bcgo.Reference, error) {
+	log.Println("Mining", channel.Name)
+	if err := bcgo.VerifySignature(publicKey, bcgo.Hash(bundle.Payload), bundle.Signature, bundle.SignatureAlgorithm); err != nil {
+		log.Println("Signature Verification Failed", err)
+		return nil, err
+	}
+
+	timestamp := uint64(time.Now().UnixNano())
+
+	recipients := [1]*bcgo.Record_Access{
+		&bcgo.Record_Access{
+			Alias:               alias,
+			SecretKey:           bundle.Key,
+			EncryptionAlgorithm: bundle.KeyEncryptionAlgorithm,
+		},
+	}
+
+	// Create record
+	record := &bcgo.Record{
+		Timestamp:            timestamp,
+		Creator:              alias,
+		Access:               recipients[:],
+		Payload:              bundle.Payload,
+		CompressionAlgorithm: bundle.CompressionAlgorithm,
+		EncryptionAlgorithm:  bundle.EncryptionAlgorithm,
+		Signature:            bundle.Signature,
+		SignatureAlgorithm:   bundle.SignatureAlgorithm,
+		Reference:            references,
+	}
+
+	// Marshal into byte array
+	data, err := proto.Marshal(record)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get record hash
+	hash := bcgo.Hash(data)
+
+	// Create entry array containing hash and record
+	entries := [1]*bcgo.BlockEntry{
+		&bcgo.BlockEntry{
+			RecordHash: hash,
+			Record:     record,
+		},
+	}
+
+	// Mine channel in goroutine
+	go func() {
+		_, _, err := node.MineRecords(channel, entries[:])
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}()
+
+	// Return reference to record
+	return &bcgo.Reference{
+		Timestamp:   timestamp,
+		ChannelName: channel.Name,
+		RecordHash:  hash,
 	}, nil
 }
 
