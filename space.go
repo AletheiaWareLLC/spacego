@@ -19,213 +19,126 @@ package spacego
 
 import (
 	"bufio"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
+	"bytes"
 	"crypto/rsa"
-	"crypto/sha512"
+	"errors"
 	"github.com/AletheiaWareLLC/bcgo"
 	"github.com/golang/protobuf/proto"
-	"io"
-	"log"
-	"net"
-	"strconv"
-	"time"
+	"net/http"
 )
 
 const (
 	SPACE_HOST           = "space.aletheiaware.com"
 	SPACE_WEBSITE        = "https://space.aletheiaware.com"
-	SPACE_PREFIX         = "Space "
-	SPACE_PREFIX_FILE    = "Space File "
-	SPACE_PREFIX_META    = "Space Meta "
-	SPACE_PREFIX_PREVIEW = "Space Preview "
-
-	PORT_UPLOAD = 23232
+	SPACE_PREFIX         = "Space-"
+	SPACE_PREFIX_FILE    = "Space-File-"
+	SPACE_PREFIX_META    = "Space-Meta-"
+	SPACE_PREFIX_PREVIEW = "Space-Preview-"
+	SPACE_PREFIX_SHARE   = "Space-Share-"
+	SPACE_PREFIX_TAG     = "Space-Tag-"
 )
 
-func OpenFileChannel(alias string) (*bcgo.Channel, error) {
-	return bcgo.OpenChannel(SPACE_PREFIX_FILE + alias)
-}
-
-func OpenMetaChannel(alias string) (*bcgo.Channel, error) {
-	return bcgo.OpenChannel(SPACE_PREFIX_META + alias)
-}
-
-func GetFile(files *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte)) error {
+func GetFile(files *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
 	return files.Read(alias, key, recordHash, callback)
 }
 
-func GetMeta(metas *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, *Meta)) error {
-	return metas.Read(alias, key, recordHash, func(entry *bcgo.BlockEntry, data []byte) {
+func GetMeta(metas *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Meta) error) error {
+	return metas.Read(alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Meta
 		meta := &Meta{}
-		err := proto.Unmarshal(data, meta)
-		if err != nil {
-			log.Println(err)
-		} else {
-			callback(entry, meta)
+		if err := proto.Unmarshal(data, meta); err != nil {
+			return err
+		} else if err := callback(entry, key, meta); err != nil {
+			return err
 		}
+		return nil
 	})
 }
 
-func NewBundle(node *bcgo.Node, payload []byte) (*StorageRequest_Bundle, error) {
-	// TODO compress payload
-
-	// Generate a random shared key
-	key := make([]byte, bcgo.AES_KEY_SIZE_BYTES)
-	if _, err := io.ReadFull(rand.Reader, key); err != nil {
-		return nil, err
-	}
-
-	// Create cipher
-	c, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create galois counter mode
-	gcm, err := cipher.NewGCM(c)
-	if err != nil {
-		return nil, err
-	}
-
-	// Generate nonce
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
-	}
-
-	// Encrypt payload
-	encryptedPayload := append(nonce, gcm.Seal(nil, nonce, payload, nil)...)
-
-	// Hash encrypted payload
-	hashed := bcgo.Hash(encryptedPayload)
-
-	// Sign hash of encrypted payload
-	signature, err := bcgo.CreateSignature(node.Key, hashed, bcgo.SignatureAlgorithm_SHA512WITHRSA_PSS)
-	if err != nil {
-		return nil, err
-	}
-
-	// Encrypt AES key with RSA public key
-	encryptedKey, err := rsa.EncryptOAEP(sha512.New(), rand.Reader, &node.Key.PublicKey, key, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &StorageRequest_Bundle{
-		Key:                    encryptedKey,
-		KeyEncryptionAlgorithm: bcgo.EncryptionAlgorithm_RSA_ECB_OAEPPADDING,
-		Payload:                encryptedPayload,
-		CompressionAlgorithm:   bcgo.CompressionAlgorithm_UNKNOWN_COMPRESSION,
-		EncryptionAlgorithm:    bcgo.EncryptionAlgorithm_AES_GCM_NOPADDING,
-		Signature:              signature,
-		SignatureAlgorithm:     bcgo.SignatureAlgorithm_SHA512WITHRSA_PSS,
-	}, nil
-}
-
-func MineBundle(node *bcgo.Node, channel *bcgo.Channel, alias string, publicKey *rsa.PublicKey, bundle *StorageRequest_Bundle, references []*bcgo.Reference) (*bcgo.Reference, error) {
-	log.Println("Mining", channel.Name)
-	if err := bcgo.VerifySignature(publicKey, bcgo.Hash(bundle.Payload), bundle.Signature, bundle.SignatureAlgorithm); err != nil {
-		log.Println("Signature Verification Failed", err)
-		return nil, err
-	}
-
-	timestamp := uint64(time.Now().UnixNano())
-
-	recipients := [1]*bcgo.Record_Access{
-		&bcgo.Record_Access{
-			Alias:               alias,
-			SecretKey:           bundle.Key,
-			EncryptionAlgorithm: bundle.KeyEncryptionAlgorithm,
-		},
-	}
-
-	// Create record
-	record := &bcgo.Record{
-		Timestamp:            timestamp,
-		Creator:              alias,
-		Access:               recipients[:],
-		Payload:              bundle.Payload,
-		CompressionAlgorithm: bundle.CompressionAlgorithm,
-		EncryptionAlgorithm:  bundle.EncryptionAlgorithm,
-		Signature:            bundle.Signature,
-		SignatureAlgorithm:   bundle.SignatureAlgorithm,
-		Reference:            references,
-	}
-
-	// Marshal into byte array
-	data, err := proto.Marshal(record)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get record hash
-	hash := bcgo.Hash(data)
-
-	// Create entry array containing hash and record
-	entries := [1]*bcgo.BlockEntry{
-		&bcgo.BlockEntry{
-			RecordHash: hash,
-			Record:     record,
-		},
-	}
-
-	// Mine channel in goroutine
-	go func() {
-		_, _, err := node.MineRecords(channel, entries[:])
-		if err != nil {
-			log.Println(err)
-			return
+func GetSharedMeta(metas *bcgo.Channel, recordHash, key []byte, callback func(*bcgo.BlockEntry, *Meta) error) error {
+	return metas.Iterate(func(h []byte, b *bcgo.Block) error {
+		for _, e := range b.Entry {
+			if recordHash == nil || bytes.Equal(recordHash, e.RecordHash) {
+				data, err := bcgo.DecryptPayload(e, key)
+				if err != nil {
+					return err
+				}
+				// Unmarshal as Meta
+				meta := &Meta{}
+				if err := proto.Unmarshal(data, meta); err != nil {
+					return err
+				} else if err := callback(e, meta); err != nil {
+					return err
+				}
+				return nil
+			}
 		}
-	}()
-
-	// Return reference to record
-	return &bcgo.Reference{
-		Timestamp:   timestamp,
-		ChannelName: channel.Name,
-		RecordHash:  hash,
-	}, nil
+		return nil
+	})
 }
 
-func Upload(host string, request *StorageRequest) (*StorageResponse, error) {
-	address := host + ":" + strconv.Itoa(PORT_UPLOAD)
-	log.Println(address)
-	connection, err := net.Dial("tcp", address)
+func GetSharedFile(shares *bcgo.Channel, recordHash, key []byte, callback func(*bcgo.BlockEntry, []byte) error) error {
+	return shares.Iterate(func(h []byte, b *bcgo.Block) error {
+		for _, e := range b.Entry {
+			if recordHash == nil || bytes.Equal(recordHash, e.RecordHash) {
+				data, err := bcgo.DecryptPayload(e, key)
+				if err != nil {
+					return err
+				}
+				return callback(e, data)
+			}
+		}
+		return nil
+	})
+}
+
+func GetTag(tags *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Tag) error) error {
+	return tags.Read(alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		// Unmarshal as Tag
+		meta := &Tag{}
+		if err := proto.Unmarshal(data, meta); err != nil {
+			return err
+		} else if err := callback(entry, key, meta); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func GetShare(metas *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Share) error) error {
+	return metas.Read(alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		// Unmarshal as Share
+		share := &Share{}
+		if err := proto.Unmarshal(data, share); err != nil {
+			return err
+		} else if err := callback(entry, key, share); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func UploadRecord(feature string, record *bcgo.Record) (*bcgo.Reference, error) {
+	var buffer bytes.Buffer
+	writer := bufio.NewWriter(&buffer)
+	err := bcgo.WriteRecord(writer, record)
 	if err != nil {
 		return nil, err
 	}
-	defer connection.Close()
-	reader := bufio.NewReader(connection)
-	writer := bufio.NewWriter(connection)
-	if err := WriteStorageRequest(writer, request); err != nil {
+	client := http.Client{}
+	request, err := http.NewRequest("POST", SPACE_WEBSITE+"/mining/"+feature, &buffer)
+	if err != nil {
 		return nil, err
 	}
-	return ReadStorageResponse(reader)
-}
-
-func ReadStorageRequest(reader *bufio.Reader) (*StorageRequest, error) {
-	// Unmarshal as StorageRequest
-	request := &StorageRequest{}
-	if err := bcgo.ReadDelimitedProtobuf(reader, request); err != nil {
+	response, err := client.Do(request)
+	if err != nil {
 		return nil, err
 	}
-	return request, nil
-}
-
-func ReadStorageResponse(reader *bufio.Reader) (*StorageResponse, error) {
-	response := &StorageResponse{}
-	if err := bcgo.ReadDelimitedProtobuf(reader, response); err != nil {
-		return nil, err
+	switch response.StatusCode {
+	case http.StatusOK:
+		defer response.Body.Close()
+		return bcgo.ReadReference(bufio.NewReader(response.Body))
+	default:
+		return nil, errors.New("Upload status: " + response.Status)
 	}
-	return response, nil
-}
-
-func WriteStorageRequest(writer *bufio.Writer, request *StorageRequest) error {
-	return bcgo.WriteDelimitedProtobuf(writer, request)
-}
-
-func WriteStorageResponse(writer *bufio.Writer, response *StorageResponse) error {
-	return bcgo.WriteDelimitedProtobuf(writer, response)
 }
