@@ -55,43 +55,6 @@ func GetMeta(metas *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash 
 	})
 }
 
-func GetSharedMeta(metas *bcgo.Channel, recordHash, key []byte, callback func(*bcgo.BlockEntry, *Meta) error) error {
-	return metas.Iterate(func(h []byte, b *bcgo.Block) error {
-		for _, e := range b.Entry {
-			if recordHash == nil || bytes.Equal(recordHash, e.RecordHash) {
-				data, err := bcgo.DecryptPayload(e, key)
-				if err != nil {
-					return err
-				}
-				// Unmarshal as Meta
-				meta := &Meta{}
-				if err := proto.Unmarshal(data, meta); err != nil {
-					return err
-				} else if err := callback(e, meta); err != nil {
-					return err
-				}
-				return nil
-			}
-		}
-		return nil
-	})
-}
-
-func GetSharedFile(shares *bcgo.Channel, recordHash, key []byte, callback func(*bcgo.BlockEntry, []byte) error) error {
-	return shares.Iterate(func(h []byte, b *bcgo.Block) error {
-		for _, e := range b.Entry {
-			if recordHash == nil || bytes.Equal(recordHash, e.RecordHash) {
-				data, err := bcgo.DecryptPayload(e, key)
-				if err != nil {
-					return err
-				}
-				return callback(e, data)
-			}
-		}
-		return nil
-	})
-}
-
 func GetTag(tags *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Tag) error) error {
 	return tags.Read(alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Tag
@@ -105,8 +68,8 @@ func GetTag(tags *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []
 	})
 }
 
-func GetShare(metas *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Share) error) error {
-	return metas.Read(alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
+func GetShare(shares *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Share) error) error {
+	return shares.Read(alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Share
 		share := &Share{}
 		if err := proto.Unmarshal(data, share); err != nil {
@@ -118,7 +81,61 @@ func GetShare(metas *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash
 	})
 }
 
-func UploadRecord(feature string, record *bcgo.Record) (*bcgo.Reference, error) {
+func GetSharedMeta(owner string, recordHash, key []byte, callback func(*bcgo.BlockEntry, *Meta) error) error {
+	metas, err := bcgo.OpenChannel(SPACE_PREFIX_META + owner)
+	if err != nil {
+		return err
+	}
+	block, err := metas.GetRemoteBlock(&bcgo.Reference{
+		ChannelName: metas.Name,
+		RecordHash:  recordHash,
+	})
+	if err != nil {
+		return err
+	}
+	for _, entry := range block.Entry {
+		if bytes.Equal(recordHash, entry.RecordHash) {
+			data, err := bcgo.DecryptPayload(entry, key)
+			if err != nil {
+				return err
+			}
+			// Unmarshal as Meta
+			meta := &Meta{}
+			if err := proto.Unmarshal(data, meta); err != nil {
+				return err
+			} else if err := callback(entry, meta); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func GetSharedFile(owner string, recordHash, key []byte, callback func(*bcgo.BlockEntry, []byte) error) error {
+	files, err := bcgo.OpenChannel(SPACE_PREFIX_FILE + owner)
+	if err != nil {
+		return err
+	}
+	block, err := files.GetRemoteBlock(&bcgo.Reference{
+		ChannelName: files.Name,
+		RecordHash:  recordHash,
+	})
+	if err != nil {
+		return err
+	}
+	for _, entry := range block.Entry {
+		if bytes.Equal(recordHash, entry.RecordHash) {
+			data, err := bcgo.DecryptPayload(entry, key)
+			if err != nil {
+				return err
+			}
+			return callback(entry, data)
+		}
+	}
+	return nil
+}
+
+func PostRecord(feature string, record *bcgo.Record) (*bcgo.Reference, error) {
 	var buffer bytes.Buffer
 	writer := bufio.NewWriter(&buffer)
 	err := bcgo.WriteRecord(writer, record)
@@ -139,6 +156,6 @@ func UploadRecord(feature string, record *bcgo.Record) (*bcgo.Reference, error) 
 		defer response.Body.Close()
 		return bcgo.ReadReference(bufio.NewReader(response.Body))
 	default:
-		return nil, errors.New("Upload status: " + response.Status)
+		return nil, errors.New("Post status: " + response.Status)
 	}
 }
