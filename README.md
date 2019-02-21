@@ -1,7 +1,7 @@
 spacego
 =======
 
-This is a Go implementation of a Space - an end-to-end encrypted blockchain-based storage platform.
+This is a Go implementation of a Space - end-to-end encrypted, blockchain-backed, data storage.
 
 Build
 =====
