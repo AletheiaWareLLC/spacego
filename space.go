@@ -40,6 +40,20 @@ const (
 	SPACE_PREFIX_TAG     = "Space-Tag-"
 )
 
+func GetSpaceHost() string {
+	if bcgo.IsDebug() {
+		return SPACE_HOST_TEST
+	}
+	return SPACE_HOST
+}
+
+func GetSpaceWebsite() string {
+	if bcgo.IsDebug() {
+		return SPACE_WEBSITE_TEST
+	}
+	return SPACE_WEBSITE
+}
+
 func GetFile(files *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
 	return files.Read(alias, key, recordHash, callback)
 }
@@ -137,7 +151,7 @@ func GetSharedFile(owner string, recordHash, key []byte, callback func(*bcgo.Blo
 	return nil
 }
 
-func PostRecord(feature string, record *bcgo.Record) (*bcgo.Reference, error) {
+func PostRecord(host, feature string, record *bcgo.Record) (*bcgo.Reference, error) {
 	var buffer bytes.Buffer
 	writer := bufio.NewWriter(&buffer)
 	err := bcgo.WriteRecord(writer, record)
@@ -145,7 +159,7 @@ func PostRecord(feature string, record *bcgo.Record) (*bcgo.Reference, error) {
 		return nil, err
 	}
 	client := http.Client{}
-	request, err := http.NewRequest("POST", SPACE_WEBSITE+"/mining/"+feature, &buffer)
+	request, err := http.NewRequest("POST", host+"/mining/"+feature, &buffer)
 	if err != nil {
 		return nil, err
 	}
