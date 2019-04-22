@@ -30,8 +30,6 @@ import (
 const (
 	SPACE_HOST           = "space.aletheiaware.com"
 	SPACE_HOST_TEST      = "test-space.aletheiaware.com"
-	SPACE_WEBSITE        = "https://space.aletheiaware.com"
-	SPACE_WEBSITE_TEST   = "https://test-space.aletheiaware.com"
 	SPACE_PREFIX         = "Space-"
 	SPACE_PREFIX_FILE    = "Space-File-"
 	SPACE_PREFIX_META    = "Space-Meta-"
@@ -48,10 +46,7 @@ func GetSpaceHost() string {
 }
 
 func GetSpaceWebsite() string {
-	if bcgo.IsDebug() {
-		return SPACE_WEBSITE_TEST
-	}
-	return SPACE_WEBSITE
+	return "https://" + GetSpaceHost()
 }
 
 func GetFile(files *bcgo.Channel, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
