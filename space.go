@@ -57,16 +57,20 @@ func OpenAndLoadMetaChannel(alias string, cache bcgo.Cache, network bcgo.Network
 	return bcgo.OpenAndLoadPoWChannel(SPACE_PREFIX_META+alias, bcgo.THRESHOLD_STANDARD, cache, network)
 }
 
-func OpenAndLoadShareChannel(alias string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
-	return bcgo.OpenAndLoadPoWChannel(SPACE_PREFIX_SHARE+alias, bcgo.THRESHOLD_STANDARD, cache, network)
+func OpenAndPullMetaChannel(alias string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
+	return bcgo.OpenAndPullPoWChannel(SPACE_PREFIX_META+alias, bcgo.THRESHOLD_STANDARD, cache, network)
 }
 
-func OpenAndLoadPreviewChannel(metaId string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
-	return bcgo.OpenAndLoadPoWChannel(SPACE_PREFIX_PREVIEW+metaId, bcgo.THRESHOLD_STANDARD, cache, network)
+func OpenAndPullShareChannel(alias string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
+	return bcgo.OpenAndPullPoWChannel(SPACE_PREFIX_SHARE+alias, bcgo.THRESHOLD_STANDARD, cache, network)
 }
 
-func OpenAndLoadTagChannel(metaId string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
-	return bcgo.OpenAndLoadPoWChannel(SPACE_PREFIX_TAG+metaId, bcgo.THRESHOLD_STANDARD, cache, network)
+func OpenAndPullPreviewChannel(metaId string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
+	return bcgo.OpenAndPullPoWChannel(SPACE_PREFIX_PREVIEW+metaId, bcgo.THRESHOLD_STANDARD, cache, network)
+}
+
+func OpenAndPullTagChannel(metaId string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
+	return bcgo.OpenAndPullPoWChannel(SPACE_PREFIX_TAG+metaId, bcgo.THRESHOLD_STANDARD, cache, network)
 }
 
 func GetFile(files bcgo.Channel, cache bcgo.Cache, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
