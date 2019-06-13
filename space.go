@@ -49,28 +49,24 @@ func GetSpaceWebsite() string {
 	return "https://" + GetSpaceHost()
 }
 
-func OpenAndLoadFileChannel(alias string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
-	return bcgo.OpenAndLoadPoWChannel(SPACE_PREFIX_FILE+alias, bcgo.THRESHOLD_STANDARD, cache, network)
+func OpenFileChannel(alias string) *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_FILE+alias, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenAndLoadMetaChannel(alias string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
-	return bcgo.OpenAndLoadPoWChannel(SPACE_PREFIX_META+alias, bcgo.THRESHOLD_STANDARD, cache, network)
+func OpenMetaChannel(alias string) *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_META+alias, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenAndPullMetaChannel(alias string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
-	return bcgo.OpenAndPullPoWChannel(SPACE_PREFIX_META+alias, bcgo.THRESHOLD_STANDARD, cache, network)
+func OpenShareChannel(alias string) *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_SHARE+alias, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenAndPullShareChannel(alias string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
-	return bcgo.OpenAndPullPoWChannel(SPACE_PREFIX_SHARE+alias, bcgo.THRESHOLD_STANDARD, cache, network)
+func OpenPreviewChannel(metaId string) *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_PREVIEW+metaId, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenAndPullPreviewChannel(metaId string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
-	return bcgo.OpenAndPullPoWChannel(SPACE_PREFIX_PREVIEW+metaId, bcgo.THRESHOLD_STANDARD, cache, network)
-}
-
-func OpenAndPullTagChannel(metaId string, cache bcgo.Cache, network bcgo.Network) *bcgo.PoWChannel {
-	return bcgo.OpenAndPullPoWChannel(SPACE_PREFIX_TAG+metaId, bcgo.THRESHOLD_STANDARD, cache, network)
+func OpenTagChannel(metaId string) *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_TAG+metaId, bcgo.THRESHOLD_STANDARD)
 }
 
 func GetFile(files bcgo.Channel, cache bcgo.Cache, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
@@ -104,7 +100,13 @@ func GetShare(shares bcgo.Channel, cache bcgo.Cache, alias string, key *rsa.Priv
 }
 
 func GetSharedMeta(cache bcgo.Cache, network bcgo.Network, owner string, recordHash, key []byte, callback func(*bcgo.BlockEntry, *Meta) error) error {
-	metas := OpenAndLoadMetaChannel(owner, cache, network)
+	metas := OpenMetaChannel(owner)
+	if err := bcgo.LoadHead(metas, cache, network); err != nil {
+		return err
+	}
+	if err := bcgo.Pull(metas, cache, network); err != nil {
+		return err
+	}
 	block, err := network.GetBlock(&bcgo.Reference{
 		ChannelName: metas.GetName(),
 		RecordHash:  recordHash,
@@ -131,7 +133,10 @@ func GetSharedMeta(cache bcgo.Cache, network bcgo.Network, owner string, recordH
 }
 
 func GetSharedFile(cache bcgo.Cache, network bcgo.Network, owner string, recordHash, key []byte, callback func(*bcgo.BlockEntry, []byte) error) error {
-	files := OpenAndLoadFileChannel(owner, cache, network)
+	files := OpenFileChannel(owner)
+	if err := bcgo.LoadHead(files, cache, network); err != nil {
+		return err
+	}
 	block, err := network.GetBlock(&bcgo.Reference{
 		ChannelName: files.GetName(),
 		RecordHash:  recordHash,
