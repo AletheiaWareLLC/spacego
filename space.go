@@ -50,6 +50,7 @@ func GetSpaceWebsite() string {
 }
 
 func OpenFileChannel(alias string) *bcgo.PoWChannel {
+	// TODO consider lowering threshold once Periodic Validation Blockchains are implemented
 	return bcgo.OpenPoWChannel(SPACE_PREFIX_FILE+alias, bcgo.THRESHOLD_STANDARD)
 }
 
