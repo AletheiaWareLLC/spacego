@@ -108,10 +108,7 @@ func GetSharedMeta(cache bcgo.Cache, network bcgo.Network, owner string, recordH
 	if err := bcgo.Pull(metas, cache, network); err != nil {
 		return err
 	}
-	block, err := network.GetBlock(&bcgo.Reference{
-		ChannelName: metas.GetName(),
-		RecordHash:  recordHash,
-	})
+	block, err := bcgo.GetBlockContainingRecord(metas.GetName(), cache, network, recordHash)
 	if err != nil {
 		return err
 	}
@@ -138,10 +135,7 @@ func GetSharedFile(cache bcgo.Cache, network bcgo.Network, owner string, recordH
 	if err := bcgo.LoadHead(files, cache, network); err != nil {
 		return err
 	}
-	block, err := network.GetBlock(&bcgo.Reference{
-		ChannelName: files.GetName(),
-		RecordHash:  recordHash,
-	})
+	block, err := bcgo.GetBlockContainingRecord(files.GetName(), cache, network, recordHash)
 	if err != nil {
 		return err
 	}
