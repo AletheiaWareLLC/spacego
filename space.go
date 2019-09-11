@@ -30,6 +30,12 @@ import (
 const (
 	SPACE_HOST           = "space.aletheiaware.com"
 	SPACE_HOST_TEST      = "test-space.aletheiaware.com"
+	SPACE_CHARGE         = "Space-Charge"
+	SPACE_MINER          = "Space-Miner"
+	SPACE_REGISTRAR      = "Space-Registrar"
+	SPACE_REGISTRATION   = "Space-Registration"
+	SPACE_SUBSCRIPTION   = "Space-Subscription"
+	SPACE_USAGE_RECORD   = "Space-Usage-Record"
 	SPACE_PREFIX         = "Space-"
 	SPACE_PREFIX_FILE    = "Space-File-"
 	SPACE_PREFIX_META    = "Space-Meta-"
@@ -47,6 +53,30 @@ func GetSpaceHost() string {
 
 func GetSpaceWebsite() string {
 	return "https://" + GetSpaceHost()
+}
+
+func OpenChargeChannel() *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_CHARGE, bcgo.THRESHOLD_STANDARD)
+}
+
+func OpenMinerChannel() *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_MINER, bcgo.THRESHOLD_STANDARD)
+}
+
+func OpenRegistrarChannel() *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_REGISTRAR, bcgo.THRESHOLD_STANDARD)
+}
+
+func OpenRegistrationChannel() *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_REGISTRATION, bcgo.THRESHOLD_STANDARD)
+}
+
+func OpenSubscriptionChannel() *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_SUBSCRIPTION, bcgo.THRESHOLD_STANDARD)
+}
+
+func OpenUsageRecordChannel() *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_USAGE_RECORD, bcgo.THRESHOLD_STANDARD)
 }
 
 func OpenFileChannel(alias string) *bcgo.PoWChannel {
