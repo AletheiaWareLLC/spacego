@@ -31,6 +31,7 @@ const (
 	SPACE_HOST           = "space.aletheiaware.com"
 	SPACE_HOST_TEST      = "test-space.aletheiaware.com"
 	SPACE_CHARGE         = "Space-Charge"
+	SPACE_INVOICE        = "Space-Invoice"
 	SPACE_MINER          = "Space-Miner"
 	SPACE_REGISTRAR      = "Space-Registrar"
 	SPACE_REGISTRATION   = "Space-Registration"
@@ -57,6 +58,10 @@ func GetSpaceWebsite() string {
 
 func OpenChargeChannel() *bcgo.PoWChannel {
 	return bcgo.OpenPoWChannel(SPACE_CHARGE, bcgo.THRESHOLD_STANDARD)
+}
+
+func OpenInvoiceChannel() *bcgo.PoWChannel {
+	return bcgo.OpenPoWChannel(SPACE_INVOICE, bcgo.THRESHOLD_STANDARD)
 }
 
 func OpenMinerChannel() *bcgo.PoWChannel {
@@ -98,6 +103,96 @@ func OpenPreviewChannel(metaId string) *bcgo.PoWChannel {
 
 func OpenTagChannel(metaId string) *bcgo.PoWChannel {
 	return bcgo.OpenPoWChannel(SPACE_PREFIX_TAG+metaId, bcgo.THRESHOLD_STANDARD)
+}
+
+func GetMiner(miners bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Miner, error) {
+	return func(alias string) (*Miner, error) {
+		var miner *Miner
+		if err := bcgo.Read(miners.GetName(), miners.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+			// Unmarshal as Miner
+			m := &Miner{}
+			err := proto.Unmarshal(data, m)
+			if err != nil {
+				return err
+			}
+			if m.Merchant.Alias == alias {
+				miner = m
+				return bcgo.StopIterationError{}
+			}
+			return nil
+		}); err != nil {
+			switch err.(type) {
+			case bcgo.StopIterationError:
+				// Do nothing
+				break
+			default:
+				return nil, err
+			}
+		}
+		return miner, nil
+	}
+}
+
+func GetMiners(miners bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Miner {
+	return func() []*Miner {
+		rs := make([]*Miner, 0)
+		bcgo.Read(miners.GetName(), miners.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+			// Unmarshal as Miner
+			r := &Miner{}
+			err := proto.Unmarshal(data, r)
+			if err != nil {
+				return err
+			}
+			rs = append(rs, r)
+			return nil
+		})
+		return rs
+	}
+}
+
+func GetRegistrar(registrars bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Registrar, error) {
+	return func(alias string) (*Registrar, error) {
+		var registrar *Registrar
+		if err := bcgo.Read(registrars.GetName(), registrars.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+			// Unmarshal as Registrar
+			r := &Registrar{}
+			err := proto.Unmarshal(data, r)
+			if err != nil {
+				return err
+			}
+			if r.Merchant.Alias == alias {
+				registrar = r
+				return bcgo.StopIterationError{}
+			}
+			return nil
+		}); err != nil {
+			switch err.(type) {
+			case bcgo.StopIterationError:
+				// Do nothing
+				break
+			default:
+				return nil, err
+			}
+		}
+		return registrar, nil
+	}
+}
+
+func GetRegistrars(registrars bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Registrar {
+	return func() []*Registrar {
+		rs := make([]*Registrar, 0)
+		bcgo.Read(registrars.GetName(), registrars.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+			// Unmarshal as Registrar
+			r := &Registrar{}
+			err := proto.Unmarshal(data, r)
+			if err != nil {
+				return err
+			}
+			rs = append(rs, r)
+			return nil
+		})
+		return rs
+	}
 }
 
 func GetFile(files bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
