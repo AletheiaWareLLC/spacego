@@ -225,14 +225,7 @@ func GetShare(shares bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias
 	})
 }
 
-func GetSharedMeta(cache bcgo.Cache, network bcgo.Network, owner string, recordHash, key []byte, callback func(*bcgo.BlockEntry, *Meta) error) error {
-	metas := OpenMetaChannel(owner)
-	if err := bcgo.LoadHead(metas, cache, network); err != nil {
-		return err
-	}
-	if err := bcgo.Pull(metas, cache, network); err != nil {
-		return err
-	}
+func GetSharedMeta(metas *bcgo.PoWChannel, cache bcgo.Cache, network bcgo.Network, recordHash, key []byte, callback func(*bcgo.BlockEntry, *Meta) error) error {
 	block, err := bcgo.GetBlockContainingRecord(metas.GetName(), cache, network, recordHash)
 	if err != nil {
 		return err
@@ -255,11 +248,7 @@ func GetSharedMeta(cache bcgo.Cache, network bcgo.Network, owner string, recordH
 	return nil
 }
 
-func GetSharedFile(cache bcgo.Cache, network bcgo.Network, owner string, recordHash, key []byte, callback func(*bcgo.BlockEntry, []byte) error) error {
-	files := OpenFileChannel(owner)
-	if err := bcgo.LoadHead(files, cache, network); err != nil {
-		return err
-	}
+func GetSharedFile(files *bcgo.PoWChannel, cache bcgo.Cache, network bcgo.Network, recordHash, key []byte, callback func(*bcgo.BlockEntry, []byte) error) error {
 	block, err := bcgo.GetBlockContainingRecord(files.GetName(), cache, network, recordHash)
 	if err != nil {
 		return err
