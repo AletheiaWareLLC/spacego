@@ -28,8 +28,6 @@ import (
 )
 
 const (
-	SPACE_HOST           = "space.aletheiaware.com"
-	SPACE_HOST_TEST      = "test-space.aletheiaware.com"
 	SPACE_CHARGE         = "Space-Charge"
 	SPACE_INVOICE        = "Space-Invoice"
 	SPACE_MINER          = "Space-Miner"
@@ -45,15 +43,16 @@ const (
 	SPACE_PREFIX_TAG     = "Space-Tag-"
 )
 
-func GetSpaceHost() string {
+func GetSpaceHosts() []string {
 	if bcgo.IsDebug() {
-		return SPACE_HOST_TEST
+		return []string{
+			"test-space.aletheiaware.com",
+		}
 	}
-	return SPACE_HOST
-}
-
-func GetSpaceWebsite() string {
-	return "https://" + GetSpaceHost()
+	return []string{
+		"space-nyc.aletheiaware.com",
+		"space-sfo.aletheiaware.com",
+	}
 }
 
 func OpenChargeChannel() *bcgo.PoWChannel {
