@@ -1,7 +1,7 @@
 spacego
 =======
 
-This is a Go implementation of a Space - secure, private, storage.
+This is a Go implementation of Space - secure, private, storage.
 
 Build
 =====

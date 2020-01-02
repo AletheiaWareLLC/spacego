@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-// Package containing utilities for Space in Go
 package spacego
 
 import (
@@ -29,6 +28,9 @@ import (
 )
 
 const (
+	SPACE_HOUR           = "Space-Hour"
+	SPACE_DAY            = "Space-Day"
+	SPACE_YEAR           = "Space-Year"
 	SPACE_CHARGE         = "Space-Charge"
 	SPACE_INVOICE        = "Space-Invoice"
 	SPACE_MINER          = "Space-Miner"
@@ -56,56 +58,68 @@ func GetSpaceHosts() []string {
 	}
 }
 
-func OpenChargeChannel() *bcgo.PoWChannel {
+func OpenHourChannel() *bcgo.Channel {
+	return bcgo.OpenPoWChannel(SPACE_HOUR, bcgo.THRESHOLD_PERIOD_HOUR)
+}
+
+func OpenDayChannel() *bcgo.Channel {
+	return bcgo.OpenPoWChannel(SPACE_DAY, bcgo.THRESHOLD_PERIOD_DAY)
+}
+
+func OpenYearChannel() *bcgo.Channel {
+	return bcgo.OpenPoWChannel(SPACE_YEAR, bcgo.THRESHOLD_PERIOD_YEAR)
+}
+
+func OpenChargeChannel() *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_CHARGE, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenInvoiceChannel() *bcgo.PoWChannel {
+func OpenInvoiceChannel() *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_INVOICE, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenMinerChannel() *bcgo.PoWChannel {
+func OpenMinerChannel() *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_MINER, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenRegistrarChannel() *bcgo.PoWChannel {
+func OpenRegistrarChannel() *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_REGISTRAR, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenRegistrationChannel() *bcgo.PoWChannel {
+func OpenRegistrationChannel() *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_REGISTRATION, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenSubscriptionChannel() *bcgo.PoWChannel {
+func OpenSubscriptionChannel() *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_SUBSCRIPTION, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenUsageRecordChannel() *bcgo.PoWChannel {
+func OpenUsageRecordChannel() *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_USAGE_RECORD, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenFileChannel(alias string) *bcgo.PoWChannel {
+func OpenFileChannel(alias string) *bcgo.Channel {
 	// TODO consider lowering threshold once Periodic Validation Blockchains are implemented
 	return bcgo.OpenPoWChannel(SPACE_PREFIX_FILE+alias, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenMetaChannel(alias string) *bcgo.PoWChannel {
+func OpenMetaChannel(alias string) *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_PREFIX_META+alias, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenShareChannel(alias string) *bcgo.PoWChannel {
+func OpenShareChannel(alias string) *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_PREFIX_SHARE+alias, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenPreviewChannel(metaId string) *bcgo.PoWChannel {
+func OpenPreviewChannel(metaId string) *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_PREFIX_PREVIEW+metaId, bcgo.THRESHOLD_STANDARD)
 }
 
-func OpenTagChannel(metaId string) *bcgo.PoWChannel {
+func OpenTagChannel(metaId string) *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_PREFIX_TAG+metaId, bcgo.THRESHOLD_STANDARD)
 }
 
-func GetMiner(miners bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Miner, error) {
+func GetMiner(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Miner, error) {
 	return func(alias string) (*Miner, error) {
 		var miner *Miner
 		if err := bcgo.Read(miners.GetName(), miners.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
@@ -133,7 +147,7 @@ func GetMiner(miners bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(
 	}
 }
 
-func GetMiners(miners bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Miner {
+func GetMiners(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Miner {
 	return func() []*Miner {
 		rs := make([]*Miner, 0)
 		bcgo.Read(miners.GetName(), miners.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
@@ -150,7 +164,7 @@ func GetMiners(miners bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func
 	}
 }
 
-func GetRegistrar(registrars bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Registrar, error) {
+func GetRegistrar(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Registrar, error) {
 	return func(alias string) (*Registrar, error) {
 		var registrar *Registrar
 		if err := bcgo.Read(registrars.GetName(), registrars.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
@@ -178,7 +192,7 @@ func GetRegistrar(registrars bcgo.Channel, cache bcgo.Cache, network bcgo.Networ
 	}
 }
 
-func GetRegistrars(registrars bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Registrar {
+func GetRegistrars(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Registrar {
 	return func() []*Registrar {
 		rs := make([]*Registrar, 0)
 		bcgo.Read(registrars.GetName(), registrars.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
@@ -195,11 +209,11 @@ func GetRegistrars(registrars bcgo.Channel, cache bcgo.Cache, network bcgo.Netwo
 	}
 }
 
-func GetFile(files bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
+func GetFile(files *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
 	return bcgo.Read(files.GetName(), files.GetHead(), nil, cache, network, alias, key, recordHash, callback)
 }
 
-func GetMeta(metas bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Meta) error) error {
+func GetMeta(metas *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Meta) error) error {
 	return bcgo.Read(metas.GetName(), metas.GetHead(), nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Meta
 		meta := &Meta{}
@@ -212,7 +226,7 @@ func GetMeta(metas bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias s
 	})
 }
 
-func GetShare(shares bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Share) error) error {
+func GetShare(shares *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Share) error) error {
 	return bcgo.Read(shares.GetName(), shares.GetHead(), nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Share
 		share := &Share{}
@@ -225,7 +239,7 @@ func GetShare(shares bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias
 	})
 }
 
-func GetSharedMeta(metas *bcgo.PoWChannel, cache bcgo.Cache, network bcgo.Network, recordHash, key []byte, callback func(*bcgo.BlockEntry, *Meta) error) error {
+func GetSharedMeta(metas *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, recordHash, key []byte, callback func(*bcgo.BlockEntry, *Meta) error) error {
 	block, err := bcgo.GetBlockContainingRecord(metas.GetName(), cache, network, recordHash)
 	if err != nil {
 		return err
@@ -248,7 +262,7 @@ func GetSharedMeta(metas *bcgo.PoWChannel, cache bcgo.Cache, network bcgo.Networ
 	return nil
 }
 
-func GetSharedFile(files *bcgo.PoWChannel, cache bcgo.Cache, network bcgo.Network, recordHash, key []byte, callback func(*bcgo.BlockEntry, []byte) error) error {
+func GetSharedFile(files *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, recordHash, key []byte, callback func(*bcgo.BlockEntry, []byte) error) error {
 	block, err := bcgo.GetBlockContainingRecord(files.GetName(), cache, network, recordHash)
 	if err != nil {
 		return err
@@ -265,7 +279,7 @@ func GetSharedFile(files *bcgo.PoWChannel, cache bcgo.Cache, network bcgo.Networ
 	return nil
 }
 
-func GetPreview(previews bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Preview) error) error {
+func GetPreview(previews *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Preview) error) error {
 	return bcgo.Read(previews.GetName(), previews.GetHead(), nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Preview
 		preview := &Preview{}
@@ -278,7 +292,7 @@ func GetPreview(previews bcgo.Channel, cache bcgo.Cache, network bcgo.Network, a
 	})
 }
 
-func GetTag(tags bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Tag) error) error {
+func GetTag(tags *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Tag) error) error {
 	return bcgo.Read(tags.GetName(), tags.GetHead(), nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Tag
 		tag := &Tag{}
