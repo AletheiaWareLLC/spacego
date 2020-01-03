@@ -23,6 +23,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"github.com/AletheiaWareLLC/bcgo"
+	"github.com/AletheiaWareLLC/cryptogo"
 	"github.com/golang/protobuf/proto"
 	"net/http"
 )
@@ -231,7 +232,7 @@ func GetSharedMeta(metas *bcgo.PoWChannel, cache bcgo.Cache, network bcgo.Networ
 	}
 	for _, entry := range block.Entry {
 		if bytes.Equal(recordHash, entry.RecordHash) {
-			data, err := bcgo.DecryptPayload(entry, key)
+			data, err := cryptogo.DecryptPayload(entry.Record.EncryptionAlgorithm, entry.Record.Payload, key)
 			if err != nil {
 				return err
 			}
@@ -254,7 +255,7 @@ func GetSharedFile(files *bcgo.PoWChannel, cache bcgo.Cache, network bcgo.Networ
 	}
 	for _, entry := range block.Entry {
 		if bytes.Equal(recordHash, entry.RecordHash) {
-			data, err := bcgo.DecryptPayload(entry, key)
+			data, err := cryptogo.DecryptPayload(entry.Record.EncryptionAlgorithm, entry.Record.Payload, key)
 			if err != nil {
 				return err
 			}
