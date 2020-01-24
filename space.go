@@ -25,6 +25,7 @@ import (
 	"github.com/AletheiaWareLLC/cryptogo"
 	"github.com/golang/protobuf/proto"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -71,52 +72,67 @@ func OpenYearChannel() *bcgo.Channel {
 }
 
 func OpenChargeChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_CHARGE, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_CHARGE, bcgo.THRESHOLD_G)
 }
 
 func OpenInvoiceChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_INVOICE, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_INVOICE, bcgo.THRESHOLD_G)
 }
 
 func OpenMinerChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_MINER, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_MINER, bcgo.THRESHOLD_G)
 }
 
 func OpenRegistrarChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_REGISTRAR, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_REGISTRAR, bcgo.THRESHOLD_G)
 }
 
 func OpenRegistrationChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_REGISTRATION, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_REGISTRATION, bcgo.THRESHOLD_G)
 }
 
 func OpenSubscriptionChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_SUBSCRIPTION, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_SUBSCRIPTION, bcgo.THRESHOLD_G)
 }
 
 func OpenUsageRecordChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_USAGE_RECORD, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_USAGE_RECORD, bcgo.THRESHOLD_G)
 }
 
 func OpenFileChannel(alias string) *bcgo.Channel {
-	// TODO consider lowering threshold once Periodic Validation Blockchains are implemented
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_FILE+alias, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_FILE+alias, bcgo.THRESHOLD_I)
 }
 
 func OpenMetaChannel(alias string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_META+alias, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_META+alias, bcgo.THRESHOLD_G)
 }
 
 func OpenShareChannel(alias string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_SHARE+alias, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_SHARE+alias, bcgo.THRESHOLD_G)
 }
 
 func OpenPreviewChannel(metaId string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_PREVIEW+metaId, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_PREVIEW+metaId, bcgo.THRESHOLD_G)
 }
 
 func OpenTagChannel(metaId string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_TAG+metaId, bcgo.THRESHOLD_STANDARD)
+	return bcgo.OpenPoWChannel(SPACE_PREFIX_TAG+metaId, bcgo.THRESHOLD_G)
+}
+
+func GetThreshold(channel string) uint64 {
+	if strings.HasPrefix(channel, SPACE_PREFIX_FILE) {
+		return bcgo.THRESHOLD_I
+	}
+	switch channel {
+	case SPACE_HOUR:
+		return bcgo.THRESHOLD_PERIOD_HOUR
+	case SPACE_DAY:
+		return bcgo.THRESHOLD_PERIOD_DAY
+	case SPACE_YEAR:
+		return bcgo.THRESHOLD_PERIOD_YEAR
+	default:
+		return bcgo.THRESHOLD_G
+	}
 }
 
 func GetMiner(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Miner, error) {
