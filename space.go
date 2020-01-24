@@ -138,7 +138,7 @@ func GetThreshold(channel string) uint64 {
 func GetMiner(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Miner, error) {
 	return func(alias string) (*Miner, error) {
 		var miner *Miner
-		if err := bcgo.Read(miners.GetName(), miners.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		if err := bcgo.Read(miners.Name, miners.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
 			// Unmarshal as Miner
 			m := &Miner{}
 			err := proto.Unmarshal(data, m)
@@ -166,7 +166,7 @@ func GetMiner(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func
 func GetMiners(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Miner {
 	return func() []*Miner {
 		rs := make([]*Miner, 0)
-		bcgo.Read(miners.GetName(), miners.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		bcgo.Read(miners.Name, miners.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
 			// Unmarshal as Miner
 			r := &Miner{}
 			err := proto.Unmarshal(data, r)
@@ -183,7 +183,7 @@ func GetMiners(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) fun
 func GetRegistrar(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Registrar, error) {
 	return func(alias string) (*Registrar, error) {
 		var registrar *Registrar
-		if err := bcgo.Read(registrars.GetName(), registrars.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		if err := bcgo.Read(registrars.Name, registrars.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
 			// Unmarshal as Registrar
 			r := &Registrar{}
 			err := proto.Unmarshal(data, r)
@@ -211,7 +211,7 @@ func GetRegistrar(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Netwo
 func GetRegistrars(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Registrar {
 	return func() []*Registrar {
 		rs := make([]*Registrar, 0)
-		bcgo.Read(registrars.GetName(), registrars.GetHead(), nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		bcgo.Read(registrars.Name, registrars.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
 			// Unmarshal as Registrar
 			r := &Registrar{}
 			err := proto.Unmarshal(data, r)
@@ -226,11 +226,11 @@ func GetRegistrars(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Netw
 }
 
 func GetFile(files *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
-	return bcgo.Read(files.GetName(), files.GetHead(), nil, cache, network, alias, key, recordHash, callback)
+	return bcgo.Read(files.Name, files.Head, nil, cache, network, alias, key, recordHash, callback)
 }
 
 func GetMeta(metas *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Meta) error) error {
-	return bcgo.Read(metas.GetName(), metas.GetHead(), nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
+	return bcgo.Read(metas.Name, metas.Head, nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Meta
 		meta := &Meta{}
 		if err := proto.Unmarshal(data, meta); err != nil {
@@ -243,7 +243,7 @@ func GetMeta(metas *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias 
 }
 
 func GetShare(shares *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Share) error) error {
-	return bcgo.Read(shares.GetName(), shares.GetHead(), nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
+	return bcgo.Read(shares.Name, shares.Head, nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Share
 		share := &Share{}
 		if err := proto.Unmarshal(data, share); err != nil {
@@ -256,7 +256,7 @@ func GetShare(shares *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alia
 }
 
 func GetSharedMeta(metas *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, recordHash, key []byte, callback func(*bcgo.BlockEntry, *Meta) error) error {
-	block, err := bcgo.GetBlockContainingRecord(metas.GetName(), cache, network, recordHash)
+	block, err := bcgo.GetBlockContainingRecord(metas.Name, cache, network, recordHash)
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func GetSharedMeta(metas *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, 
 }
 
 func GetSharedFile(files *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, recordHash, key []byte, callback func(*bcgo.BlockEntry, []byte) error) error {
-	block, err := bcgo.GetBlockContainingRecord(files.GetName(), cache, network, recordHash)
+	block, err := bcgo.GetBlockContainingRecord(files.Name, cache, network, recordHash)
 	if err != nil {
 		return err
 	}
@@ -296,7 +296,7 @@ func GetSharedFile(files *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, 
 }
 
 func GetPreview(previews *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Preview) error) error {
-	return bcgo.Read(previews.GetName(), previews.GetHead(), nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
+	return bcgo.Read(previews.Name, previews.Head, nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Preview
 		preview := &Preview{}
 		if err := proto.Unmarshal(data, preview); err != nil {
@@ -309,7 +309,7 @@ func GetPreview(previews *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, 
 }
 
 func GetTag(tags *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, *Tag) error) error {
-	return bcgo.Read(tags.GetName(), tags.GetHead(), nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
+	return bcgo.Read(tags.Name, tags.Head, nil, cache, network, alias, key, recordHash, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Tag
 		tag := &Tag{}
 		if err := proto.Unmarshal(data, tag); err != nil {
