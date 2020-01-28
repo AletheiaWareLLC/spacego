@@ -48,14 +48,14 @@ const (
 )
 
 func GetSpaceHosts() []string {
-	if bcgo.IsDebug() {
+	if bcgo.IsLive() {
 		return []string{
-			"test-space.aletheiaware.com",
+			"space-nyc.aletheiaware.com",
+			"space-sfo.aletheiaware.com",
 		}
 	}
 	return []string{
-		"space-nyc.aletheiaware.com",
-		"space-sfo.aletheiaware.com",
+		"test-space.aletheiaware.com",
 	}
 }
 
