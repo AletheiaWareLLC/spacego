@@ -363,3 +363,11 @@ func ParseRemoteMiningResponse(response *http.Response) (*bcgo.Reference, error)
 		return nil, errors.New("Response status: " + response.Status)
 	}
 }
+
+func UnmarshalMeta(data []byte) (*Meta, error) {
+	meta := &Meta{}
+	if err := proto.Unmarshal(data, meta); err != nil {
+		return nil, err
+	}
+	return meta, nil
+}
