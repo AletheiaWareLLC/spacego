@@ -99,24 +99,44 @@ func OpenUsageRecordChannel() *bcgo.Channel {
 	return bcgo.OpenPoWChannel(SPACE_USAGE_RECORD, bcgo.THRESHOLD_G)
 }
 
+func GetFileChannelName(alias string) string {
+	return SPACE_PREFIX_FILE + alias
+}
+
+func GetMetaChannelName(alias string) string {
+	return SPACE_PREFIX_META + alias
+}
+
+func GetShareChannelName(alias string) string {
+	return SPACE_PREFIX_SHARE + alias
+}
+
+func GetPreviewChannelName(metaId string) string {
+	return SPACE_PREFIX_PREVIEW + metaId
+}
+
+func GetTagChannelName(metaId string) string {
+	return SPACE_PREFIX_TAG + metaId
+}
+
 func OpenFileChannel(alias string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_FILE+alias, bcgo.THRESHOLD_I)
+	return bcgo.OpenPoWChannel(GetFileChannelName(alias), bcgo.THRESHOLD_I)
 }
 
 func OpenMetaChannel(alias string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_META+alias, bcgo.THRESHOLD_G)
+	return bcgo.OpenPoWChannel(GetMetaChannelName(alias), bcgo.THRESHOLD_G)
 }
 
 func OpenShareChannel(alias string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_SHARE+alias, bcgo.THRESHOLD_G)
+	return bcgo.OpenPoWChannel(GetShareChannelName(alias), bcgo.THRESHOLD_G)
 }
 
 func OpenPreviewChannel(metaId string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_PREVIEW+metaId, bcgo.THRESHOLD_G)
+	return bcgo.OpenPoWChannel(GetPreviewChannelName(metaId), bcgo.THRESHOLD_G)
 }
 
 func OpenTagChannel(metaId string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_PREFIX_TAG+metaId, bcgo.THRESHOLD_G)
+	return bcgo.OpenPoWChannel(GetTagChannelName(metaId), bcgo.THRESHOLD_G)
 }
 
 func GetThreshold(channel string) uint64 {
