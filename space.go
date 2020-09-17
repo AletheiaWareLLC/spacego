@@ -39,6 +39,7 @@ const (
 	SPACE_REGISTRATION   = "Space-Registration"
 	SPACE_SUBSCRIPTION   = "Space-Subscription"
 	SPACE_USAGE_RECORD   = "Space-Usage-Record"
+
 	SPACE_PREFIX         = "Space-"
 	SPACE_PREFIX_FILE    = "Space-File-"
 	SPACE_PREFIX_META    = "Space-Meta-"
@@ -362,12 +363,4 @@ func ParseRemoteMiningResponse(response *http.Response) (*bcgo.Reference, error)
 	default:
 		return nil, errors.New("Response status: " + response.Status)
 	}
-}
-
-func UnmarshalMeta(data []byte) (*Meta, error) {
-	meta := &Meta{}
-	if err := proto.Unmarshal(data, meta); err != nil {
-		return nil, err
-	}
-	return meta, nil
 }
