@@ -29,16 +29,16 @@ import (
 )
 
 const (
-	SPACE_HOUR           = "Space-Hour"
-	SPACE_DAY            = "Space-Day"
-	SPACE_YEAR           = "Space-Year"
-	SPACE_CHARGE         = "Space-Charge"
-	SPACE_INVOICE        = "Space-Invoice"
-	SPACE_MINER          = "Space-Miner"
-	SPACE_REGISTRAR      = "Space-Registrar"
-	SPACE_REGISTRATION   = "Space-Registration"
-	SPACE_SUBSCRIPTION   = "Space-Subscription"
-	SPACE_USAGE_RECORD   = "Space-Usage-Record"
+	SPACE_HOUR         = "Space-Hour"
+	SPACE_DAY          = "Space-Day"
+	SPACE_YEAR         = "Space-Year"
+	SPACE_CHARGE       = "Space-Charge"
+	SPACE_INVOICE      = "Space-Invoice"
+	SPACE_MINER        = "Space-Miner"
+	SPACE_REGISTRAR    = "Space-Registrar"
+	SPACE_REGISTRATION = "Space-Registration"
+	SPACE_SUBSCRIPTION = "Space-Subscription"
+	SPACE_USAGE_RECORD = "Space-Usage-Record"
 
 	SPACE_PREFIX         = "Space-"
 	SPACE_PREFIX_FILE    = "Space-File-"
@@ -46,6 +46,23 @@ const (
 	SPACE_PREFIX_PREVIEW = "Space-Preview-"
 	SPACE_PREFIX_SHARE   = "Space-Share-"
 	SPACE_PREFIX_TAG     = "Space-Tag-"
+
+	MIME_TYPE_UNKNOWN    = "?/?"
+	MIME_TYPE_IMAGE_JPEG = "image/jpeg"
+	MIME_TYPE_IMAGE_PNG  = "image/png"
+	MIME_TYPE_IMAGE_WEBP = "image/webp"
+	MIME_TYPE_TEXT_PLAIN = "text/plain"
+	MIME_TYPE_PDF        = "application/pdf"
+	MIME_TYPE_PROTOBUF   = "application/x-protobuf"
+	MIME_TYPE_VIDEO_MPEG = "video/mpeg"
+	MIME_TYPE_AUDIO_MPEG = "audio/mpeg"
+
+	MIME_TYPE_IMAGE_DEFAULT = "image/jpeg"
+	MIME_TYPE_VIDEO_DEFAULT = "video/mpeg"
+	MIME_TYPE_AUDIO_DEFAULT = "audio/mpeg"
+
+	PREVIEW_IMAGE_SIZE  = 128
+	PREVIEW_TEXT_LENGTH = 64
 )
 
 func GetSpaceHosts() []string {
