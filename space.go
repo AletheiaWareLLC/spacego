@@ -29,6 +29,7 @@ import (
 )
 
 const (
+	SPACE              = "S P A C E"
 	SPACE_HOUR         = "Space-Hour"
 	SPACE_DAY          = "Space-Day"
 	SPACE_YEAR         = "Space-Year"
