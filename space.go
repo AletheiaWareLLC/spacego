@@ -383,3 +383,10 @@ func ParseRemoteMiningResponse(response *http.Response) (*bcgo.Reference, error)
 		return nil, errors.New("Response status: " + response.Status)
 	}
 }
+
+func GetMinimumRegistrars() int {
+	if bcgo.IsLive() {
+		return 3
+	}
+	return 1
+}
