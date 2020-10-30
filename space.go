@@ -175,94 +175,84 @@ func GetThreshold(channel string) uint64 {
 	}
 }
 
-func GetMiner(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Miner, error) {
-	return func(alias string) (*Miner, error) {
-		var miner *Miner
-		if err := bcgo.Read(miners.Name, miners.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
-			// Unmarshal as Miner
-			m := &Miner{}
-			err := proto.Unmarshal(data, m)
-			if err != nil {
-				return err
-			}
-			if m.Merchant.Alias == alias {
-				miner = m
-				return bcgo.StopIterationError{}
-			}
-			return nil
-		}); err != nil {
-			switch err.(type) {
-			case bcgo.StopIterationError:
-				// Do nothing
-				break
-			default:
-				return nil, err
-			}
+func GetMiner(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string) (*Miner, error) {
+	var miner *Miner
+	if err := bcgo.Read(miners.Name, miners.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		// Unmarshal as Miner
+		m := &Miner{}
+		err := proto.Unmarshal(data, m)
+		if err != nil {
+			return err
 		}
-		return miner, nil
-	}
-}
-
-func GetMiners(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Miner {
-	return func() []*Miner {
-		rs := make([]*Miner, 0)
-		bcgo.Read(miners.Name, miners.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
-			// Unmarshal as Miner
-			r := &Miner{}
-			err := proto.Unmarshal(data, r)
-			if err != nil {
-				return err
-			}
-			rs = append(rs, r)
-			return nil
-		})
-		return rs
-	}
-}
-
-func GetRegistrar(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func(string) (*Registrar, error) {
-	return func(alias string) (*Registrar, error) {
-		var registrar *Registrar
-		if err := bcgo.Read(registrars.Name, registrars.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
-			// Unmarshal as Registrar
-			r := &Registrar{}
-			err := proto.Unmarshal(data, r)
-			if err != nil {
-				return err
-			}
-			if r.Merchant.Alias == alias {
-				registrar = r
-				return bcgo.StopIterationError{}
-			}
-			return nil
-		}); err != nil {
-			switch err.(type) {
-			case bcgo.StopIterationError:
-				// Do nothing
-				break
-			default:
-				return nil, err
-			}
+		if m.Merchant.Alias == alias {
+			miner = m
+			return bcgo.StopIterationError{}
 		}
-		return registrar, nil
+		return nil
+	}); err != nil {
+		switch err.(type) {
+		case bcgo.StopIterationError:
+			// Do nothing
+			break
+		default:
+			return nil, err
+		}
 	}
+	return miner, nil
 }
 
-func GetRegistrars(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) func() []*Registrar {
-	return func() []*Registrar {
-		rs := make([]*Registrar, 0)
-		bcgo.Read(registrars.Name, registrars.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
-			// Unmarshal as Registrar
-			r := &Registrar{}
-			err := proto.Unmarshal(data, r)
-			if err != nil {
-				return err
-			}
-			rs = append(rs, r)
-			return nil
-		})
-		return rs
+func GetMiners(miners *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) (ms []*Miner) {
+	bcgo.Read(miners.Name, miners.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		// Unmarshal as Miner
+		m := &Miner{}
+		err := proto.Unmarshal(data, m)
+		if err != nil {
+			return err
+		}
+		ms = append(ms, m)
+		return nil
+	})
+	return ms
+}
+
+func GetRegistrar(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string) (*Registrar, error) {
+	var registrar *Registrar
+	if err := bcgo.Read(registrars.Name, registrars.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		// Unmarshal as Registrar
+		r := &Registrar{}
+		err := proto.Unmarshal(data, r)
+		if err != nil {
+			return err
+		}
+		if r.Merchant.Alias == alias {
+			registrar = r
+			return bcgo.StopIterationError{}
+		}
+		return nil
+	}); err != nil {
+		switch err.(type) {
+		case bcgo.StopIterationError:
+			// Do nothing
+			break
+		default:
+			return nil, err
+		}
 	}
+	return registrar, nil
+}
+
+func GetRegistrars(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Network) (rs []*Registrar) {
+	bcgo.Read(registrars.Name, registrars.Head, nil, cache, network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		// Unmarshal as Registrar
+		r := &Registrar{}
+		err := proto.Unmarshal(data, r)
+		if err != nil {
+			return err
+		}
+		rs = append(rs, r)
+		return nil
+	})
+	return rs
 }
 
 func GetFile(files *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback func(*bcgo.BlockEntry, []byte, []byte) error) error {
