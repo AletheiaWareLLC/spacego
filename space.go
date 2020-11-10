@@ -293,7 +293,7 @@ func GetSharedMeta(metas *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, 
 	}
 	for _, entry := range block.Entry {
 		if bytes.Equal(recordHash, entry.RecordHash) {
-			data, err := cryptogo.DecryptPayload(entry.Record.EncryptionAlgorithm, entry.Record.Payload, key)
+			data, err := cryptogo.DecryptPayload(entry.Record.EncryptionAlgorithm, key, entry.Record.Payload)
 			if err != nil {
 				return err
 			}
@@ -316,7 +316,7 @@ func GetSharedFile(files *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, 
 	}
 	for _, entry := range block.Entry {
 		if bytes.Equal(recordHash, entry.RecordHash) {
-			data, err := cryptogo.DecryptPayload(entry.Record.EncryptionAlgorithm, entry.Record.Payload, key)
+			data, err := cryptogo.DecryptPayload(entry.Record.EncryptionAlgorithm, key, entry.Record.Payload)
 			if err != nil {
 				return err
 			}
