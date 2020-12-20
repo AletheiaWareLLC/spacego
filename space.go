@@ -83,40 +83,46 @@ func GetSpaceHosts() []string {
 	}
 }
 
+func openLivePoWChannel(name string, threshold uint64) *bcgo.Channel {
+	c := bcgo.OpenPoWChannel(name, threshold)
+	c.AddValidator(&bcgo.LiveValidator{})
+	return c
+}
+
 func OpenHourChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_HOUR, bcgo.THRESHOLD_PERIOD_HOUR)
+	return openLivePoWChannel(SPACE_HOUR, bcgo.THRESHOLD_PERIOD_HOUR)
 }
 
 func OpenDayChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_DAY, bcgo.THRESHOLD_PERIOD_DAY)
+	return openLivePoWChannel(SPACE_DAY, bcgo.THRESHOLD_PERIOD_DAY)
 }
 
 func OpenYearChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_YEAR, bcgo.THRESHOLD_PERIOD_YEAR)
+	return openLivePoWChannel(SPACE_YEAR, bcgo.THRESHOLD_PERIOD_YEAR)
 }
 
 func OpenChargeChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_CHARGE, bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(SPACE_CHARGE, bcgo.THRESHOLD_Z)
 }
 
 func OpenInvoiceChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_INVOICE, bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(SPACE_INVOICE, bcgo.THRESHOLD_Z)
 }
 
 func OpenRegistrarChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_REGISTRAR, bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(SPACE_REGISTRAR, bcgo.THRESHOLD_Z)
 }
 
 func OpenRegistrationChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_REGISTRATION, bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(SPACE_REGISTRATION, bcgo.THRESHOLD_Z)
 }
 
 func OpenSubscriptionChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_SUBSCRIPTION, bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(SPACE_SUBSCRIPTION, bcgo.THRESHOLD_Z)
 }
 
 func OpenUsageRecordChannel() *bcgo.Channel {
-	return bcgo.OpenPoWChannel(SPACE_USAGE_RECORD, bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(SPACE_USAGE_RECORD, bcgo.THRESHOLD_Z)
 }
 
 func GetDeltaChannelName(metaId string) string {
@@ -136,19 +142,19 @@ func GetTagChannelName(metaId string) string {
 }
 
 func OpenDeltaChannel(metaId string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(GetDeltaChannelName(metaId), bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(GetDeltaChannelName(metaId), bcgo.THRESHOLD_Z)
 }
 
 func OpenMetaChannel(alias string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(GetMetaChannelName(alias), bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(GetMetaChannelName(alias), bcgo.THRESHOLD_Z)
 }
 
 func OpenPreviewChannel(metaId string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(GetPreviewChannelName(metaId), bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(GetPreviewChannelName(metaId), bcgo.THRESHOLD_Z)
 }
 
 func OpenTagChannel(metaId string) *bcgo.Channel {
-	return bcgo.OpenPoWChannel(GetTagChannelName(metaId), bcgo.THRESHOLD_Z)
+	return openLivePoWChannel(GetTagChannelName(metaId), bcgo.THRESHOLD_Z)
 }
 
 func ApplyDelta(delta *Delta, input []byte) []byte {
