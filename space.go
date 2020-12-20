@@ -166,7 +166,7 @@ func ApplyDelta(delta *Delta, input []byte) []byte {
 	return output
 }
 
-func CreateDeltaRecords(reader io.Reader, max uint64, callback func(*Delta) error) error {
+func CreateDeltas(reader io.Reader, max uint64, callback func(*Delta) error) error {
 	buffer := make([]byte, max)
 	var size uint64
 	for {

@@ -83,7 +83,7 @@ func TestApplyDelta(t *testing.T) {
 	}
 }
 
-func TestCreateDeltaRecords(t *testing.T) {
+func TestCreateDeltas(t *testing.T) {
 	for name, tt := range map[string]struct {
 		initial string
 		want    []*spacego.Delta
@@ -115,7 +115,7 @@ func TestCreateDeltaRecords(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			var got []*spacego.Delta
-			testinggo.AssertNoError(t, spacego.CreateDeltaRecords(strings.NewReader(tt.initial), 10, func(d *spacego.Delta) error {
+			testinggo.AssertNoError(t, spacego.CreateDeltas(strings.NewReader(tt.initial), 10, func(d *spacego.Delta) error {
 				got = append(got, d)
 				return nil
 			}))
