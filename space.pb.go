@@ -4,8 +4,8 @@
 package spacego
 
 import (
+	financego "aletheiaware.com/financego"
 	fmt "fmt"
-	financego "github.com/AletheiaWareLLC/financego"
 	proto "github.com/golang/protobuf/proto"
 	math "math"
 )

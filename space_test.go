@@ -17,8 +17,8 @@
 package spacego_test
 
 import (
-	"github.com/AletheiaWareLLC/spacego"
-	"github.com/AletheiaWareLLC/testinggo"
+	"aletheiaware.com/spacego"
+	"aletheiaware.com/testinggo"
 	"strings"
 	"testing"
 )
