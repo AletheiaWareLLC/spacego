@@ -162,12 +162,12 @@ func OpenTagChannel(metaId string) *bcgo.Channel {
 func ApplyDelta(delta *Delta, input []byte) []byte {
 	count := 0
 	length := uint64(len(input))
-	output := make([]byte, length-delta.Remove+uint64(len(delta.Add)))
+	output := make([]byte, length-delta.Delete+uint64(len(delta.Insert)))
 	if delta.Offset <= length {
 		count += copy(output, input[:delta.Offset])
 	}
-	count += copy(output[count:], delta.Add)
-	index := delta.Offset + delta.Remove
+	count += copy(output[count:], delta.Insert)
+	index := delta.Offset + delta.Delete
 	if index < length {
 		copy(output[count:], input[index:])
 	}
@@ -187,11 +187,11 @@ func CreateDeltas(reader io.Reader, max uint64, callback func(*Delta) error) err
 				return err
 			}
 		}
-		add := make([]byte, count)
-		copy(add, buffer[:count])
+		insert := make([]byte, count)
+		copy(insert, buffer[:count])
 		delta := &Delta{
 			Offset: size,
-			Add:    add,
+			Insert: insert,
 		}
 		if err := callback(delta); err != nil {
 			return err

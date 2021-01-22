@@ -19,6 +19,7 @@ package spacego_test
 import (
 	"aletheiaware.com/spacego"
 	"aletheiaware.com/testinggo"
+	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 )
@@ -34,16 +35,16 @@ func TestApplyDelta(t *testing.T) {
 			initial: "foobar",
 			want:    "foobar",
 		},
-		"Remove": {
+		"Delete": {
 			delta: &spacego.Delta{
-				Remove: uint64(len([]byte("foo"))),
+				Delete: uint64(len([]byte("foo"))),
 			},
 			initial: "foobar",
 			want:    "bar",
 		},
-		"RemoveAll": {
+		"DeleteAll": {
 			delta: &spacego.Delta{
-				Remove: uint64(len([]byte("foobar"))),
+				Delete: uint64(len([]byte("foobar"))),
 			},
 			initial: "foobar",
 			want:    "",
@@ -51,7 +52,7 @@ func TestApplyDelta(t *testing.T) {
 		"Append": {
 			delta: &spacego.Delta{
 				Offset: 6,
-				Add:    []byte("blah"),
+				Insert: []byte("blah"),
 			},
 			initial: "foobar",
 			want:    "foobarblah",
@@ -59,7 +60,7 @@ func TestApplyDelta(t *testing.T) {
 		"Insert": {
 			delta: &spacego.Delta{
 				Offset: 3,
-				Add:    []byte("blah"),
+				Insert: []byte("blah"),
 			},
 			initial: "foobar",
 			want:    "fooblahbar",
@@ -67,8 +68,8 @@ func TestApplyDelta(t *testing.T) {
 		"Replace": {
 			delta: &spacego.Delta{
 				Offset: 3,
-				Remove: uint64(len([]byte("bar"))),
-				Add:    []byte("blah"),
+				Delete: uint64(len([]byte("bar"))),
+				Insert: []byte("blah"),
 			},
 			initial: "foobar",
 			want:    "fooblah",
@@ -76,9 +77,7 @@ func TestApplyDelta(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			got := string(spacego.ApplyDelta(tt.delta, []byte(tt.initial)))
-			if got != tt.want {
-				t.Fatalf("Incorrect buffer; expected '%s', got '%s'", tt.want, got)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -90,13 +89,12 @@ func TestCreateDeltas(t *testing.T) {
 	}{
 		"Empty": {
 			initial: "",
-			want:    []*spacego.Delta{},
 		},
 		"Single": {
 			initial: "foobar",
 			want: []*spacego.Delta{
 				&spacego.Delta{
-					Add: []byte("foobar"),
+					Insert: []byte("foobar"),
 				},
 			},
 		},
@@ -104,11 +102,11 @@ func TestCreateDeltas(t *testing.T) {
 			initial: "foobarfoobar",
 			want: []*spacego.Delta{
 				&spacego.Delta{
-					Add: []byte("foobarfoob"),
+					Insert: []byte("foobarfoob"),
 				},
 				&spacego.Delta{
 					Offset: 10,
-					Add:    []byte("ar"),
+					Insert: []byte("ar"),
 				},
 			},
 		},
@@ -119,24 +117,7 @@ func TestCreateDeltas(t *testing.T) {
 				got = append(got, d)
 				return nil
 			}))
-			if len(got) != len(tt.want) {
-				t.Fatalf("Wrong number of deltas; expected '%d', got '%d'", len(tt.want), len(got))
-			}
-			for i, w := range tt.want {
-				g := got[i]
-				if g.Offset != w.Offset {
-					t.Fatalf("Incorrect offset; expected '%d', got '%d'", w.Offset, g.Offset)
-				}
-				if g.Remove != w.Remove {
-					t.Fatalf("Incorrect remove; expected '%d', got '%d'", w.Remove, g.Remove)
-				}
-				if len(g.Add) != len(w.Add) {
-					t.Fatalf("Incorrect add length; expected '%d', got '%d'", len(w.Add), len(g.Add))
-				}
-				if string(g.Add) != string(w.Add) {
-					t.Fatalf("Incorrect add; expected '%s', got '%s'", string(w.Add), string(g.Add))
-				}
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

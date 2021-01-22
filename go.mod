@@ -8,4 +8,5 @@ require (
 	aletheiaware.com/financego v1.1.0
 	aletheiaware.com/testinggo v1.1.0
 	github.com/golang/protobuf v1.4.3
+	github.com/stretchr/testify v1.6.1
 )
