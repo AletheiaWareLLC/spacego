@@ -18,6 +18,7 @@ package spacego
 
 import (
 	"aletheiaware.com/bcgo"
+	"aletheiaware.com/financego"
 	"crypto/rsa"
 	"github.com/golang/protobuf/proto"
 	"io"
@@ -65,13 +66,15 @@ const (
 	MAX_SIZE_BYTES = bcgo.MAX_PAYLOAD_SIZE_BYTES - 1024 // 10Mb-1Kb (for delta protobuf stuff)
 )
 
-type DeltaCallback func(entry *bcgo.BlockEntry, delta *Delta) error
+type DeltaCallback func(*bcgo.BlockEntry, *Delta) error
 
-type MetaCallback func(entry *bcgo.BlockEntry, meta *Meta) error
+type MetaCallback func(*bcgo.BlockEntry, *Meta) error
 
-type PreviewCallback func(entry *bcgo.BlockEntry, preview *Preview) error
+type PreviewCallback func(*bcgo.BlockEntry, *Preview) error
 
-type TagCallback func(entry *bcgo.BlockEntry, tag *Tag) error
+type RegistrarCallback func(*bcgo.BlockEntry, *Registrar) error
+
+type TagCallback func(*bcgo.BlockEntry, *Tag) error
 
 func GetSpaceHosts() []string {
 	if bcgo.IsLive() {
@@ -252,6 +255,111 @@ func GetRegistrars(registrars *bcgo.Channel, cache bcgo.Cache, network bcgo.Netw
 		return nil
 	})
 	return
+}
+
+// GetAllRegistrars triggers the given callback for each registrar.
+func GetAllRegistrars(node *bcgo.Node, callback RegistrarCallback) error {
+	registrars := node.GetOrOpenChannel(SPACE_REGISTRAR, func() *bcgo.Channel {
+		return OpenRegistrarChannel()
+	})
+	if err := registrars.Refresh(node.Cache, node.Network); err != nil {
+		// Ignored
+	}
+	return bcgo.Read(registrars.Name, registrars.Head, nil, node.Cache, node.Network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		// Unmarshal as Registrar
+		r := &Registrar{}
+		err := proto.Unmarshal(data, r)
+		if err != nil {
+			return err
+		}
+		return callback(entry, r)
+	})
+}
+
+// GetAllRegistrarsForNode triggers the given callback for each registrar with which the given node is registered, and optionally subscribed
+func GetAllRegistrarsForNode(node *bcgo.Node, callback func(*Registrar, *financego.Registration, *financego.Subscription) error) error {
+	// Get registrars
+	as := make(map[string]*Registrar)
+	if err := GetAllRegistrars(node, func(e *bcgo.BlockEntry, r *Registrar) error {
+		as[r.Merchant.Alias] = r
+		return nil
+	}); err != nil {
+		return err
+	}
+	// Get registrations
+	rs := make(map[string]*financego.Registration)
+	if err := GetAllRegistrationsForNode(node, func(e *bcgo.BlockEntry, r *financego.Registration) error {
+		if _, ok := as[r.MerchantAlias]; ok {
+			rs[r.MerchantAlias] = r
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	// Get subscriptions
+	ss := make(map[string]*financego.Subscription)
+	if err := GetAllSubscriptionsForNode(node, func(e *bcgo.BlockEntry, s *financego.Subscription) error {
+		if _, ok := as[s.MerchantAlias]; ok {
+			ss[s.MerchantAlias] = s
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	for merchant, registrar := range as {
+		registration, ok := rs[merchant]
+		if !ok {
+			continue
+		}
+		if err := callback(registrar, registration, ss[merchant]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// GetAllRegistrationsForNode triggers the given callback for each registration.
+func GetAllRegistrationsForNode(node *bcgo.Node, callback financego.RegistrationCallback) error {
+	registrations := node.GetOrOpenChannel(SPACE_REGISTRATION, func() *bcgo.Channel {
+		return OpenRegistrationChannel()
+	})
+	if err := registrations.Refresh(node.Cache, node.Network); err != nil {
+		// Ignored
+	}
+	return bcgo.Read(registrations.Name, registrations.Head, nil, node.Cache, node.Network, node.Alias, node.Key, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		// Unmarshal as Registration
+		r := &financego.Registration{}
+		err := proto.Unmarshal(data, r)
+		if err != nil {
+			return err
+		}
+		if node.Alias == r.CustomerAlias {
+			return callback(entry, r)
+		}
+		return nil
+	})
+}
+
+// GetAllSubscriptionsForNode triggers the given callback for each subscription.
+func GetAllSubscriptionsForNode(node *bcgo.Node, callback financego.SubscriptionCallback) error {
+	subscriptions := node.GetOrOpenChannel(SPACE_SUBSCRIPTION, func() *bcgo.Channel {
+		return OpenSubscriptionChannel()
+	})
+	if err := subscriptions.Refresh(node.Cache, node.Network); err != nil {
+		// Ignored
+	}
+	return bcgo.Read(subscriptions.Name, subscriptions.Head, nil, node.Cache, node.Network, node.Alias, node.Key, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
+		// Unmarshal as Subscription
+		s := &financego.Subscription{}
+		err := proto.Unmarshal(data, s)
+		if err != nil {
+			return err
+		}
+		if node.Alias == s.CustomerAlias {
+			return callback(entry, s)
+		}
+		return nil
+	})
 }
 
 func GetDelta(deltas *bcgo.Channel, cache bcgo.Cache, network bcgo.Network, alias string, key *rsa.PrivateKey, recordHash []byte, callback DeltaCallback) error {
