@@ -24,13 +24,11 @@ import (
 	"io"
 	"log"
 	"sort"
+	"strings"
 )
 
 const (
 	SPACE              = "S P A C E"
-	SPACE_HOUR         = "Space-Hour"
-	SPACE_DAY          = "Space-Day"
-	SPACE_YEAR         = "Space-Year"
 	SPACE_CHARGE       = "Space-Charge"
 	SPACE_INVOICE      = "Space-Invoice"
 	SPACE_REGISTRAR    = "Space-Registrar"
@@ -38,13 +36,18 @@ const (
 	SPACE_SUBSCRIPTION = "Space-Subscription"
 	SPACE_USAGE_RECORD = "Space-Usage-Record"
 
-	SPACE_PREFIX         = "Space-"
-	SPACE_PREFIX_DELTA   = "Space-Delta-"
-	SPACE_PREFIX_META    = "Space-Meta-"
-	SPACE_PREFIX_PREVIEW = "Space-Preview-"
-	SPACE_PREFIX_TAG     = "Space-Tag-"
+	SPACE_PREFIX            = "Space-"
+	SPACE_PREFIX_DELTA      = "Space-Delta-"
+	SPACE_PREFIX_META       = "Space-Meta-"
+	SPACE_PREFIX_PREVIEW    = "Space-Preview-"
+	SPACE_PREFIX_TAG        = "Space-Tag-"
+	SPACE_PREFIX_VALIDATION = "Space-Validation-"
 
-	THRESHOLD = bcgo.THRESHOLD_G
+	THRESHOLD_ACCOUNTING = bcgo.THRESHOLD_G // Charge, Invoice, Registrar, Registration, Subscription, Usage Record Channels
+	THRESHOLD_CUSTOMER   = bcgo.THRESHOLD_Z // Delta, Meta, Preview, Tag Channels
+	THRESHOLD_VALIDATION = bcgo.THRESHOLD_PERIOD_DAY
+
+	PERIOD_VALIDATION = bcgo.PERIOD_DAILY
 
 	MIME_TYPE_UNKNOWN    = "?/?"
 	MIME_TYPE_IMAGE_JPEG = "image/jpeg"
@@ -107,40 +110,49 @@ func GetMimeTypes() []string {
 	return mimes
 }
 
-func OpenHourChannel() *bcgo.Channel {
-	return openLivePoWChannel(SPACE_HOUR, bcgo.THRESHOLD_PERIOD_HOUR)
+func GetValidator(node *bcgo.Node, channel *bcgo.Channel, listener bcgo.MiningListener) *bcgo.PeriodicValidator {
+	return bcgo.GetDailyValidator(node, channel, listener)
 }
 
-func OpenDayChannel() *bcgo.Channel {
-	return openLivePoWChannel(SPACE_DAY, bcgo.THRESHOLD_PERIOD_DAY)
+func openChannel(name string, threshold uint64) *bcgo.Channel {
+	c := bcgo.OpenPoWChannel(name, threshold)
+	c.AddValidator(&bcgo.LiveValidator{})
+	// TODO c.AddValidator(&bcgo.SignatureValidator{})
+	return c
 }
 
-func OpenYearChannel() *bcgo.Channel {
-	return openLivePoWChannel(SPACE_YEAR, bcgo.THRESHOLD_PERIOD_YEAR)
+/* TODO
+func openCustomerChannel(customer, name string, threshold uint64) *bcgo.Channel {
+	c := openChannel(name, threshold)
+	c.AddValidator(&bcgo.CreatorValidator{
+		Creator: customer,
+	})
+	return c
 }
+*/
 
 func OpenChargeChannel() *bcgo.Channel {
-	return openLivePoWChannel(SPACE_CHARGE, THRESHOLD)
+	return openChannel(SPACE_CHARGE, THRESHOLD_ACCOUNTING)
 }
 
 func OpenInvoiceChannel() *bcgo.Channel {
-	return openLivePoWChannel(SPACE_INVOICE, THRESHOLD)
+	return openChannel(SPACE_INVOICE, THRESHOLD_ACCOUNTING)
 }
 
 func OpenRegistrarChannel() *bcgo.Channel {
-	return openLivePoWChannel(SPACE_REGISTRAR, THRESHOLD)
+	return openChannel(SPACE_REGISTRAR, THRESHOLD_ACCOUNTING)
 }
 
 func OpenRegistrationChannel() *bcgo.Channel {
-	return openLivePoWChannel(SPACE_REGISTRATION, THRESHOLD)
+	return openChannel(SPACE_REGISTRATION, THRESHOLD_ACCOUNTING)
 }
 
 func OpenSubscriptionChannel() *bcgo.Channel {
-	return openLivePoWChannel(SPACE_SUBSCRIPTION, THRESHOLD)
+	return openChannel(SPACE_SUBSCRIPTION, THRESHOLD_ACCOUNTING)
 }
 
 func OpenUsageRecordChannel() *bcgo.Channel {
-	return openLivePoWChannel(SPACE_USAGE_RECORD, THRESHOLD)
+	return openChannel(SPACE_USAGE_RECORD, THRESHOLD_ACCOUNTING)
 }
 
 func GetDeltaChannelName(metaId string) string {
@@ -159,20 +171,32 @@ func GetTagChannelName(metaId string) string {
 	return SPACE_PREFIX_TAG + metaId
 }
 
+func GetValidationChannelName(alias string) string {
+	return SPACE_PREFIX_VALIDATION + alias
+}
+
 func OpenDeltaChannel(metaId string) *bcgo.Channel {
-	return openLivePoWChannel(GetDeltaChannelName(metaId), THRESHOLD)
+	// TODO return openCustomerChannel(alias, GetDeltaChannelName(metaId), THRESHOLD_CUSTOMER)
+	return openChannel(GetDeltaChannelName(metaId), THRESHOLD_CUSTOMER)
 }
 
 func OpenMetaChannel(alias string) *bcgo.Channel {
-	return openLivePoWChannel(GetMetaChannelName(alias), THRESHOLD)
+	// TODO return openCustomerChannel(alias, GetMetaChannelName(alias), THRESHOLD_CUSTOMER)
+	return openChannel(GetMetaChannelName(alias), THRESHOLD_CUSTOMER)
 }
 
 func OpenPreviewChannel(metaId string) *bcgo.Channel {
-	return openLivePoWChannel(GetPreviewChannelName(metaId), THRESHOLD)
+	// TODO return openCustomerChannel(alias, GetPreviewChannelName(metaId), THRESHOLD_CUSTOMER)
+	return openChannel(GetPreviewChannelName(metaId), THRESHOLD_CUSTOMER)
 }
 
 func OpenTagChannel(metaId string) *bcgo.Channel {
-	return openLivePoWChannel(GetTagChannelName(metaId), THRESHOLD)
+	// TODO return openCustomerChannel(alias, GetTagChannelName(metaId), THRESHOLD_CUSTOMER)
+	return openChannel(GetTagChannelName(metaId), THRESHOLD_CUSTOMER)
+}
+
+func OpenValidationChannel(alias string) *bcgo.Channel {
+	return openChannel(GetValidationChannelName(alias), THRESHOLD_VALIDATION)
 }
 
 func ApplyDelta(delta *Delta, input []byte) []byte {
@@ -219,14 +243,25 @@ func CreateDeltas(reader io.Reader, max uint64, callback func(*Delta) error) err
 
 func GetThreshold(channel string) uint64 {
 	switch channel {
-	case SPACE_HOUR:
-		return bcgo.THRESHOLD_PERIOD_HOUR
-	case SPACE_DAY:
-		return bcgo.THRESHOLD_PERIOD_DAY
-	case SPACE_YEAR:
-		return bcgo.THRESHOLD_PERIOD_YEAR
+	case SPACE_CHARGE,
+		SPACE_INVOICE,
+		SPACE_REGISTRAR,
+		SPACE_REGISTRATION,
+		SPACE_SUBSCRIPTION,
+		SPACE_USAGE_RECORD:
+		return THRESHOLD_ACCOUNTING
 	default:
-		return THRESHOLD
+		switch {
+		case strings.HasPrefix(channel, SPACE_PREFIX_VALIDATION):
+			return THRESHOLD_VALIDATION
+		case strings.HasPrefix(channel, SPACE_PREFIX_DELTA),
+			strings.HasPrefix(channel, SPACE_PREFIX_META),
+			strings.HasPrefix(channel, SPACE_PREFIX_PREVIEW),
+			strings.HasPrefix(channel, SPACE_PREFIX_TAG):
+			return THRESHOLD_CUSTOMER
+		default:
+			return 0
+		}
 	}
 }
 
