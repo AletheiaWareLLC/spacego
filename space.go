@@ -22,6 +22,7 @@ import (
 	"crypto/rsa"
 	"github.com/golang/protobuf/proto"
 	"io"
+	"sort"
 )
 
 const (
@@ -88,10 +89,21 @@ func GetSpaceHosts() []string {
 	}
 }
 
-func openLivePoWChannel(name string, threshold uint64) *bcgo.Channel {
-	c := bcgo.OpenPoWChannel(name, threshold)
-	c.AddValidator(&bcgo.LiveValidator{})
-	return c
+func GetMimeTypes() []string {
+	mimes := []string{
+		MIME_TYPE_IMAGE_JPEG,
+		MIME_TYPE_IMAGE_JPG,
+		MIME_TYPE_IMAGE_GIF,
+		MIME_TYPE_IMAGE_PNG,
+		MIME_TYPE_IMAGE_WEBP,
+		MIME_TYPE_TEXT_PLAIN,
+		MIME_TYPE_PDF,
+		MIME_TYPE_PROTOBUF,
+		MIME_TYPE_VIDEO_MPEG,
+		MIME_TYPE_AUDIO_MPEG,
+	}
+	sort.Strings(mimes)
+	return mimes
 }
 
 func OpenHourChannel() *bcgo.Channel {
