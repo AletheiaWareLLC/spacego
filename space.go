@@ -22,6 +22,7 @@ import (
 	"crypto/rsa"
 	"github.com/golang/protobuf/proto"
 	"io"
+	"log"
 	"sort"
 )
 
@@ -275,7 +276,7 @@ func GetAllRegistrars(node *bcgo.Node, callback RegistrarCallback) error {
 		return OpenRegistrarChannel()
 	})
 	if err := registrars.Refresh(node.Cache, node.Network); err != nil {
-		// Ignored
+		log.Println(err)
 	}
 	return bcgo.Read(registrars.Name, registrars.Head, nil, node.Cache, node.Network, "", nil, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Registrar
@@ -336,7 +337,7 @@ func GetAllRegistrationsForNode(node *bcgo.Node, callback financego.Registration
 		return OpenRegistrationChannel()
 	})
 	if err := registrations.Refresh(node.Cache, node.Network); err != nil {
-		// Ignored
+		log.Println(err)
 	}
 	return bcgo.Read(registrations.Name, registrations.Head, nil, node.Cache, node.Network, node.Alias, node.Key, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Registration
@@ -358,7 +359,7 @@ func GetAllSubscriptionsForNode(node *bcgo.Node, callback financego.Subscription
 		return OpenSubscriptionChannel()
 	})
 	if err := subscriptions.Refresh(node.Cache, node.Network); err != nil {
-		// Ignored
+		log.Println(err)
 	}
 	return bcgo.Read(subscriptions.Name, subscriptions.Head, nil, node.Cache, node.Network, node.Alias, node.Key, nil, func(entry *bcgo.BlockEntry, key, data []byte) error {
 		// Unmarshal as Subscription
