@@ -277,12 +277,12 @@ func RegistrarForAlias(registrars bcgo.Channel, cache bcgo.Cache, network bcgo.N
 		}
 		if r.Merchant.Alias == alias {
 			registrar = r
-			return bcgo.StopIterationError{}
+			return bcgo.ErrStopIteration{}
 		}
 		return nil
 	}); err != nil {
 		switch err.(type) {
-		case bcgo.StopIterationError:
+		case bcgo.ErrStopIteration:
 			// Do nothing
 			break
 		default:
