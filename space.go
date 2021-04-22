@@ -473,7 +473,7 @@ func IterateDeltas(node bcgo.Node, deltas bcgo.Channel, callback DeltaCallback) 
 					if err := proto.Unmarshal(decryptedPayload, d); err != nil {
 						return err
 					}
-					if err:= callback(entry, d); err != nil {
+					if err := callback(entry, d); err != nil {
 						return nil
 					}
 				}

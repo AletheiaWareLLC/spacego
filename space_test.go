@@ -26,58 +26,188 @@ import (
 
 func TestApplyDelta(t *testing.T) {
 	for name, tt := range map[string]struct {
-		delta   *spacego.Delta
-		initial string
-		want    string
+		given    string
+		deltas   []*spacego.Delta
+		expected string
 	}{
-		"Empty": {
-			delta:   &spacego.Delta{},
-			initial: "foobar",
-			want:    "foobar",
+		"empty": {},
+		"equal": {
+			given:    "foobar",
+			expected: "foobar",
 		},
-		"Delete": {
-			delta: &spacego.Delta{
-				Delete: uint64(len([]byte("foo"))),
+		"insert_prefix": {
+			given: "bar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Insert: []byte("foo"),
+				},
 			},
-			initial: "foobar",
-			want:    "bar",
+			expected: "foobar",
 		},
-		"DeleteAll": {
-			delta: &spacego.Delta{
-				Delete: uint64(len([]byte("foobar"))),
+		"insert_infix": {
+			given: "foar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Offset: 2,
+					Insert: []byte("ob"),
+				},
 			},
-			initial: "foobar",
-			want:    "",
+			expected: "foobar",
 		},
-		"Append": {
-			delta: &spacego.Delta{
-				Offset: 6,
-				Insert: []byte("blah"),
+		"insert_suffix": {
+			given: "foo",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Offset: 3,
+					Insert: []byte("bar"),
+				},
 			},
-			initial: "foobar",
-			want:    "foobarblah",
+			expected: "foobar",
 		},
-		"Insert": {
-			delta: &spacego.Delta{
-				Offset: 3,
-				Insert: []byte("blah"),
+		"delete_all": {
+			given: "foobar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Delete: 6,
+				},
 			},
-			initial: "foobar",
-			want:    "fooblahbar",
 		},
-		"Replace": {
-			delta: &spacego.Delta{
-				Offset: 3,
-				Delete: uint64(len([]byte("bar"))),
-				Insert: []byte("blah"),
+		"delete_prefix": {
+			given: "foobar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Delete: 3,
+				},
 			},
-			initial: "foobar",
-			want:    "fooblah",
+			expected: "bar",
+		},
+		"delete_infix": {
+			given: "foobar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Offset: 2,
+					Delete: 2,
+				},
+			},
+			expected: "foar",
+		},
+		"delete_suffix": {
+			given: "foobar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Offset: 3,
+					Delete: 3,
+				},
+			},
+			expected: "foo",
+		},
+		"swap": {
+			given: "foobar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Insert: []byte("bar"),
+				},
+				&spacego.Delta{
+					Offset: 6,
+					Delete: 3,
+				},
+			},
+			expected: "barfoo",
+		},
+		"delete_vowels": {
+			given: "foobar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Offset: 1,
+					Delete: 2,
+				},
+				&spacego.Delta{
+					Offset: 2,
+					Delete: 1,
+				},
+			},
+			expected: "fbr",
+		},
+		"delete_consonants": {
+			given: "foobar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Delete: 1,
+				},
+				&spacego.Delta{
+					Offset: 2,
+					Delete: 1,
+				},
+				&spacego.Delta{
+					Offset: 3,
+					Delete: 1,
+				},
+			},
+			expected: "ooa",
+		},
+		"insert_vowels": {
+			given: "fbr",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Offset: 1,
+					Insert: []byte("oo"),
+				},
+				&spacego.Delta{
+					Offset: 4,
+					Insert: []byte("a"),
+				},
+			},
+			expected: "foobar",
+		},
+		"insert_consonants": {
+			given: "ooa",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Insert: []byte("f"),
+				},
+				&spacego.Delta{
+					Offset: 3,
+					Insert: []byte("b"),
+				},
+				&spacego.Delta{
+					Offset: 5,
+					Insert: []byte("r"),
+				},
+			},
+			expected: "foobar",
+		},
+		"replace": {
+			given: "foo",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Delete: 3,
+					Insert: []byte("bar"),
+				},
+			},
+			expected: "bar",
+		},
+		"reverse": {
+			given: "foobar",
+			deltas: []*spacego.Delta{
+				&spacego.Delta{
+					Delete: 1,
+					Insert: []byte("rab"),
+				},
+				&spacego.Delta{
+					Offset: 5,
+					Delete: 3,
+					Insert: []byte("f"),
+				},
+			},
+			expected: "raboof",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			got := string(spacego.ApplyDelta(tt.delta, []byte(tt.initial)))
-			assert.Equal(t, tt.want, got)
+			buffer := []byte(tt.given)
+			for _, d := range tt.deltas {
+				buffer = spacego.ApplyDelta(d, buffer)
+			}
+			assert.Equal(t, tt.expected, string(buffer))
 		})
 	}
 }
